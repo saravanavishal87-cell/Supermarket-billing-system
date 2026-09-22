@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Management - Supermarket POS</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <a href="/dashboard.html" class="header-brand">
+      <img id="navShopLogo" src="/images/shop_banner.jpg" alt="Logo" onerror="this.src='/images/shop_banner.jpg';">
+      <div>
+        <h1 id="navShopTitle">Rahul Stores</h1>
+        <div class="subtitle">Customer Directory & Accounts</div>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/billing.html">POS Billing</a>
+      <a href="/monthly-income.html">Monthly Income & Tax</a>
+      <a href="/products.html">Products</a>
+      <a href="/customers.html" class="active">Customers</a>
+      <a href="/credentials.html">Credentials</a>
+      <a href="/shop.html">Shop Profile</a>
+      <button class="btn btn-outline-white" onclick="logout()" style="margin-left: 10px;">Logout</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="page-title-bar">
+      <h2>👥 Customer Management</h2>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="document.getElementById('purchaseToolCard').scrollIntoView({behavior:'smooth'})">🔍 Lookup / Update Purchase</button>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add New Customer</button>
+      </div>
+    </div>
+
+    <!-- Customer Purchase Lookup & Update Tool Card -->
+    <div class="card" id="purchaseToolCard" style="margin-bottom: 20px; background: #f0fdf4; border-color: #bbf7d0;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 1.1rem; color: #166534; display: flex; align-items: center; gap: 8px;">
+          <span>🧾</span> Customer Purchase Lookup & Update
+        </h3>
+        <span style="font-size: 0.8rem; color: #15803d;">Find or link purchases using Customer ID or Mobile Number</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <!-- Lookup Purchases -->
+        <div style="background: white; padding: 14px; border-radius: 6px; border: 1px solid #dcfce7;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #166534;">
+            View Purchases by Customer ID or Mobile No:
+          </label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="purchaseLookupQuery" placeholder="e.g. 1 or 9876543210" 
+                   style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupCustomerPurchases();}">
+            <button class="btn btn-primary" onclick="lookupCustomerPurchases()">View Purchases</button>
+          </div>
+        </div>
+
+        <!-- Reassign / Update Bill to Customer -->
+        <div style="background: white; padding: 14px; border-radius: 6px; border: 1px solid #dcfce7;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #166534;">
+            Update Purchase / Bill to Customer:
+          </label>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <input type="text" id="updateBillIdInput" placeholder="Bill No / ID (e.g. INV-...)" 
+                   style="flex: 1; min-width: 130px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem;">
+            <input type="text" id="updateCustRefInput" placeholder="Customer ID or Mobile" 
+                   style="flex: 1; min-width: 130px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem;">
+            <button class="btn btn-accent" onclick="updateBillToCustomer()">Update Purchase</button>
+          </div>
+          <div id="updatePurchaseStatus" style="font-size: 0.8rem; margin-top: 6px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="search-bar-box">
+        <input type="text" id="customerSearchInput" placeholder="🔍 Search customer by name or phone number..." oninput="fetchCustomers()">
+        <button class="btn btn-secondary" onclick="fetchCustomers()">Search</button>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Customer Name</th>
+            <th>Phone Number</th>
+            <th>Email Address</th>
+            <th>Address</th>
+            <th>Registered Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="customerTableBody">
+          <tr><td colspan="7" style="text-align: center; color: var(--muted);">Loading customers...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Add / Edit Customer Modal -->
+  <div class="modal-overlay" id="customerModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add New Customer</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="customerForm" onsubmit="saveCustomer(event)">
+          <input type="hidden" id="customerIdInput">
+          
+          <div class="form-group">
+            <label for="nameInput">Full Name *</label>
+            <input type="text" id="nameInput" placeholder="e.g. Ramesh Kumar" required>
+          </div>
+
+          <div class="form-group">
+            <label for="phoneInput">Phone Number *</label>
+            <input type="tel" id="phoneInput" placeholder="e.g. 9876543210" required>
+          </div>
+
+          <div class="form-group">
+            <label for="emailInput">Email Address</label>
+            <input type="email" id="emailInput" placeholder="e.g. customer@example.com">
+          </div>
+
+          <div class="form-group">
+            <label for="addressInput">Address</label>
+            <textarea id="addressInput" rows="3" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Full street address"></textarea>
+          </div>
+
+          <div id="modalError" class="error-msg"></div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top: 16px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveBtn">Save Customer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadShopBrand() {
+      try {
+        const res = await fetch('/api/shop');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.shopName) document.getElementById('navShopTitle').textContent = data.shopName;
+          if (data.imagePath) document.getElementById('navShopLogo').src = data.imagePath + '?t=' + Date.now();
+        }
+      } catch (e) {}
+    }
+
+    async function fetchCustomers() {
+      const search = document.getElementById('customerSearchInput').value.trim();
+      const tbody = document.getElementById('customerTableBody');
+      try {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(search)}`);
+        if (res.ok) {
+          const list = await res.json();
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted); padding: 20px;">No customers found.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = list.map(c => `
+            <tr>
+              <td><strong>#${c.customerId}</strong></td>
+              <td><strong>${escapeHtml(c.name)}</strong></td>
+              <td>${escapeHtml(c.phone)}</td>
+              <td>${escapeHtml(c.email || '-')}</td>
+              <td>${escapeHtml(c.address || '-')}</td>
+              <td>${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
+              <td>
+                <button class="btn btn-primary" style="padding: 4px 8px; font-size: 0.8rem; background: #0284c7; border-color: #0284c7;" onclick="viewPurchases(${c.customerId}, '${escapeHtml(c.phone)}', '${escapeHtml(c.name)}')">📜 Purchases</button>
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editCustomer(${c.customerId})">Edit</button>
+                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteCustomer(${c.customerId}, '${escapeHtml(c.name)}')">Delete</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger);">Error loading customers</td></tr>';
+      }
+    }
+
+    function openAddModal() {
+      document.getElementById('modalTitle').textContent = 'Add New Customer';
+      document.getElementById('customerIdInput').value = '';
+      document.getElementById('nameInput').value = '';
+      document.getElementById('phoneInput').value = '';
+      document.getElementById('emailInput').value = '';
+      document.getElementById('addressInput').value = '';
+      document.getElementById('modalError').textContent = '';
+      document.getElementById('customerModal').classList.add('active');
+    }
+
+    async function editCustomer(id) {
+      try {
+        const res = await fetch(`/api/customers/${id}`);
+        if (res.ok) {
+          const c = await res.json();
+          document.getElementById('modalTitle').textContent = 'Edit Customer Details';
+          document.getElementById('customerIdInput').value = c.customerId;
+          document.getElementById('nameInput').value = c.name;
+          document.getElementById('phoneInput').value = c.phone;
+          document.getElementById('emailInput').value = c.email || '';
+          document.getElementById('addressInput').value = c.address || '';
+          document.getElementById('modalError').textContent = '';
+          document.getElementById('customerModal').classList.add('active');
+        }
+      } catch (e) {
+        alert('Error fetching customer details');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('customerModal').classList.remove('active');
+    }
+
+    async function saveCustomer(e) {
+      e.preventDefault();
+      const id = document.getElementById('customerIdInput').value;
+      const payload = {
+        name: document.getElementById('nameInput').value.trim(),
+        phone: document.getElementById('phoneInput').value.trim(),
+        email: document.getElementById('emailInput').value.trim(),
+        address: document.getElementById('addressInput').value.trim()
+      };
+
+      const errorDiv = document.getElementById('modalError');
+      errorDiv.textContent = '';
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/customers/${id}` : '/api/customers';
+
+      try {
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          closeModal();
+          fetchCustomers();
+        } else {
+          const err = await res.json();
+          errorDiv.textContent = err.error || 'Failed to save customer';
+        }
+      } catch (e) {
+        errorDiv.textContent = 'Network error saving customer';
+      }
+    }
+
+    async function deleteCustomer(id, name) {
+      if (!confirm(`Are you sure you want to remove customer "${name}"?`)) return;
+      try {
+        const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchCustomers();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to delete customer'));
+        }
+      } catch (e) {
+        alert('Network error deleting customer');
+      }
+    }
+
+    async function viewPurchases(id, phone, name) {
+      document.getElementById('historyTitle').textContent = `Purchase History: ${name} (ID #${id || '-'} | ${phone || '-'})`;
+      const container = document.getElementById('historyContent');
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted);">Loading purchase history...</div>';
+      document.getElementById('historyModal').classList.add('active');
+
+      try {
+        let url = id ? `/api/customers/${id}/purchases` : (phone ? `/api/customers/by-phone/${encodeURIComponent(phone)}/purchases` : `/api/bills?search=${encodeURIComponent(name)}`);
+        const res = await fetch(url);
+        if (res.ok) {
+          const bills = await res.json();
+          renderBillsList(container, bills, name);
+        } else {
+          container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--danger);">Error loading purchase history</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--danger);">Error loading purchase history</div>';
+      }
+    }
+
+    async function lookupCustomerPurchases() {
+      const query = document.getElementById('purchaseLookupQuery').value.trim();
+      if (!query) {
+        alert('Please enter a Customer ID or Mobile Number');
+        return;
+      }
+
+      document.getElementById('historyTitle').textContent = `Customer Purchases for: "${query}"`;
+      const container = document.getElementById('historyContent');
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted);">Looking up customer & purchases...</div>';
+      document.getElementById('historyModal').classList.add('active');
+
+      try {
+        const res = await fetch(`/api/customers/lookup?query=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const c = data.customer;
+          document.getElementById('historyTitle').textContent = `Purchases: ${c.name} (Customer ID #${c.customerId} | 📞 ${c.phone})`;
+          renderBillsList(container, data.purchases || [], c.name);
+        } else {
+          // Try searching bills directly if customer record wasn't found
+          const billRes = await fetch(`/api/bills?search=${encodeURIComponent(query)}`);
+          if (billRes.ok) {
+            const bills = await billRes.json();
+            renderBillsList(container, bills, query);
+          } else {
+            container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted);">No customer or purchases found for "${escapeHtml(query)}".</div>`;
+          }
+        }
+      } catch (err) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--danger);">Error searching purchases: ' + err.message + '</div>';
+      }
+    }
+
+    function renderBillsList(container, bills, customerLabel) {
+      if (!bills || bills.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted);">No purchase records found for "${escapeHtml(customerLabel)}".</div>`;
+        return;
+      }
+
+      const totalSpent = bills.reduce((sum, b) => sum + (Number(b.grandTotal) || 0), 0);
+      const avgOrder = totalSpent / bills.length;
+
+      let html = `
+        <div style="display:flex; justify-content:space-around; background:#f8fafc; border:1px solid var(--border); padding:10px; border-radius:6px; margin-bottom:16px;">
+          <div><div style="font-size:0.75rem; color:var(--muted);">TOTAL ORDERS</div><div style="font-size:1.2rem; font-weight:bold; color:var(--primary);">${bills.length}</div></div>
+          <div><div style="font-size:0.75rem; color:var(--muted);">TOTAL SPENT</div><div style="font-size:1.2rem; font-weight:bold; color:#15803d;">Rs. ${totalSpent.toFixed(2)}</div></div>
+          <div><div style="font-size:0.75rem; color:var(--muted);">AVG ORDER</div><div style="font-size:1.2rem; font-weight:bold; color:#0284c7;">Rs. ${avgOrder.toFixed(2)}</div></div>
+        </div>
+      `;
+
+      html += bills.map(b => `
+        <div style="border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 12px; background: #fafafa;">
+          <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 6px; border-bottom: 1px dashed var(--border); padding-bottom: 6px;">
+            <span>Receipt #${b.billNumber}</span>
+            <span style="color: var(--primary);">Grand Total: Rs. ${Number(b.grandTotal).toFixed(2)}</span>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--muted); margin-bottom: 8px;">
+            📅 Date: ${b.billDate ? new Date(b.billDate).toLocaleString() : '-'} | 💳 Payment: <strong>${b.paymentMode}</strong> | Customer: <strong>${escapeHtml(b.customerName || 'Walk-in')}</strong> ${b.customerPhone ? '(' + escapeHtml(b.customerPhone) + ')' : ''}
+          </div>
+          <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+            <thead>
+              <tr style="background:#eee; text-align:left;">
+                <th style="padding:4px 6px;">Product Item</th>
+                <th style="padding:4px 6px; text-align:center;">Qty</th>
+                <th style="padding:4px 6px; text-align:right;">Price</th>
+                <th style="padding:4px 6px; text-align:right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(b.items || []).map(item => `
+                <tr>
+                  <td style="padding:4px 6px;">${escapeHtml(item.productName || 'Product #' + item.productId)}</td>
+                  <td style="padding:4px 6px; text-align:center;">${item.quantity}</td>
+                  <td style="padding:4px 6px; text-align:right;">Rs. ${Number(item.unitPrice).toFixed(2)}</td>
+                  <td style="padding:4px 6px; text-align:right; font-weight:600;">Rs. ${Number(item.lineTotal).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('');
+
+      container.innerHTML = html;
+    }
+
+    async function updateBillToCustomer() {
+      const billIdentifier = document.getElementById('updateBillIdInput').value.trim();
+      const customerIdOrPhone = document.getElementById('updateCustRefInput').value.trim();
+      const status = document.getElementById('updatePurchaseStatus');
+      status.textContent = '';
+
+      if (!billIdentifier || !customerIdOrPhone) {
+        status.style.color = '#dc2626';
+        status.textContent = 'Please enter both Bill Number and Customer ID/Mobile Number.';
+        return;
+      }
+
+      status.style.color = '#2563eb';
+      status.textContent = 'Updating purchase...';
+
+      try {
+        const res = await fetch('/api/bills/update-customer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ billIdentifier, customerIdOrPhone })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          status.style.color = '#15803d';
+          status.textContent = `✅ ${data.message} for Bill #${billIdentifier}`;
+          document.getElementById('updateBillIdInput').value = '';
+          document.getElementById('updateCustRefInput').value = '';
+        } else {
+          status.style.color = '#dc2626';
+          status.textContent = '⚠️ ' + (data.error || 'Failed to update purchase');
+        }
+      } catch (e) {
+        status.style.color = '#dc2626';
+        status.textContent = 'Network error updating purchase: ' + e.message;
+      }
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').classList.remove('active');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function logout() {
+      localStorage.removeItem('user');
+      window.location.href = '/login.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadShopBrand();
+      fetchCustomers();
+    });
+  </script>
+
+  <!-- Customer Purchase History Modal -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal-card" style="max-width: 640px;">
+      <div class="modal-header">
+        <h3 id="historyTitle">Customer Purchase History</h3>
+        <button class="modal-close" onclick="closeHistoryModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="historyContent" style="max-height: 70vh; overflow-y: auto;">
+        <!-- Purchase bills populated here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeHistoryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

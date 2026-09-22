@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAHUL STORES - POS Billing System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="background: #061c14;">
+  <div class="landing-wrapper" id="landingWrapper" style="cursor: pointer;">
+    <div class="landing-bg-glow"></div>
+    <div class="landing-content">
+      <!-- Store Name & Tagline at TOP of image -->
+      <div style="margin-bottom: 20px;">
+        <h1 class="landing-title" id="landingShopName">RAHUL STORES</h1>
+        <p class="landing-tagline" style="margin-bottom: 0;">Fast, Reliable & Modern Supermarket POS Billing System</p>
+      </div>
+
+      <!-- Banner Image Frame (Preserved) -->
+      <div class="landing-image-frame" style="margin-bottom: 22px;">
+        <img id="landingShopImage" src="/images/shop_banner.jpg" alt="RAHUL STORES Banner" onerror="this.src='/images/shop_banner.jpg';">
+      </div>
+
+      <!-- Option BELOW Image: CLICK ANYWHERE TO CONTINUE -->
+      <div style="margin-bottom: 24px;">
+        <div class="continue-banner" id="continueOption">
+          ✨ CLICK ANYWHERE TO CONTINUE ➔
+        </div>
+      </div>
+
+      <!-- Quick Access Buttons -->
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px;">
+        <a href="/billing.html" class="btn btn-primary" style="padding: 10px 22px; font-size: 0.95rem; border-radius: 30px;">
+          🛒 Open POS Billing
+        </a>
+        <a href="/customers.html" class="btn btn-secondary" style="padding: 10px 22px; font-size: 0.95rem; border-radius: 30px; background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.4);">
+          👥 Customers & Purchases
+        </a>
+        <a href="/dashboard.html" class="btn btn-secondary" style="padding: 10px 22px; font-size: 0.95rem; border-radius: 30px; background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.4);">
+          📊 Dashboard
+        </a>
+        <a href="/shop.html" class="btn btn-secondary" style="padding: 10px 22px; font-size: 0.95rem; border-radius: 30px; background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.4);">
+          🏪 Shop Profile
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function proceedToApp() {
+      const user = sessionStorage.getItem('user');
+      if (user) {
+        window.location.href = '/billing.html';
+      } else {
+        window.location.href = '/login.html';
+      }
+    }
+
+    // Click anywhere to continue
+    document.getElementById('landingWrapper').addEventListener('click', (e) => {
+      // Don't intercept direct link clicks inside the buttons
+      if (e.target.tagName === 'A' || e.target.closest('a')) return;
+      proceedToApp();
+    });
+
+    async function loadShopDetails() {
+      try {
+        const res = await fetch('/api/shop');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.shopName) document.getElementById('landingShopName').textContent = data.shopName;
+          if (data.imagePath) document.getElementById('landingShopImage').src = data.imagePath + '?t=' + Date.now();
+        }
+      } catch (e) {
+        console.warn('Using default shop branding', e);
+      }
+    }
+    loadShopDetails();
+  </script>
+</body>
+</html>

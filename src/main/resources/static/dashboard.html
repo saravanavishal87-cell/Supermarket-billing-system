@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Rahul Stores POS</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="container">
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card green">
+        <div class="label">Today's Sales</div>
+        <div class="value" id="salesValue">Rs. 0.00</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="label">Bills Today</div>
+        <div class="value" id="billsValue">0</div>
+      </div>
+      <div class="stat-card success">
+        <div class="label">Total Products</div>
+        <div class="value" id="productsValue">0</div>
+      </div>
+    </div>
+
+    <div class="nav-grid">
+      <a href="/billing.html" class="nav-card billing">
+        <h3>🛒 New Bill</h3>
+        <p>Start POS checkout & issue invoice receipt</p>
+      </a>
+      <a href="/products.html" class="nav-card products" id="productsLink">
+        <h3>📦 Product Inventory</h3>
+        <p>Manage store items & pricing</p>
+      </a>
+      <a href="/monthly-income.html" class="nav-card" style="border-left: 4px solid #10b981;">
+        <h3 style="color: #059669;">📊 Monthly Income & Tax</h3>
+        <p>Monthly sales, tax, expenses (rent, electric, purchases), & P&L</p>
+      </a>
+      <a href="/customers.html" class="nav-card" style="border-left: 4px solid #0284c7;">
+        <h3 style="color: #0284c7;">👥 Customers</h3>
+        <p>Manage customer directory & records</p>
+      </a>
+      <a href="/credentials.html" class="nav-card" id="credentialsLink" style="border-left: 4px solid #f59e0b;">
+        <h3 style="color: #d97706;" id="credentialsTitle">🔐 Admin & Cashier Credentials</h3>
+        <p id="credentialsDesc">Manage login passwords & staff credentials</p>
+      </a>
+      <a href="/shop.html" class="nav-card" style="border-left: 4px solid var(--primary);">
+        <h3 style="color: var(--primary);">🏪 Shop Profile & Settings</h3>
+        <p>Branding, logo, & invoice settings</p>
+      </a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    const user = requireAuth();
+    document.getElementById('header').innerHTML = renderHeader('Dashboard', 'Rahul Stores overview');
+
+    if (user.role !== 'ADMIN') {
+      document.getElementById('productsLink').style.display = 'none';
+      const credTitle = document.getElementById('credentialsTitle');
+      const credDesc = document.getElementById('credentialsDesc');
+      if (credTitle) credTitle.textContent = '👤 My Account & Password';
+      if (credDesc) credDesc.textContent = 'Edit your cashier profile and change password';
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await apiGet('/dashboard/stats');
+        document.getElementById('salesValue').textContent = formatCurrency(stats.todaySales);
+        document.getElementById('billsValue').textContent = stats.todayBills;
+        document.getElementById('productsValue').textContent = stats.productCount;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>

@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rahul Stores POS - Billing</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- HTML5 QR Code / Barcode Scanner library (deferred) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="pos-layout">
+    <!-- Left: Product Input & Search Panel -->
+    <div class="panel">
+      <div class="panel-header">Product Input Mode</div>
+      
+      <!-- Mode Tabs -->
+      <div class="input-tabs">
+        <button class="tab-btn active" id="tabNameBtn" onclick="switchTab('name')">🔍 Search Name/Barcode</button>
+        <button class="tab-btn" id="tabIdBtn" onclick="switchTab('id')">🔢 Add by ID</button>
+        <button class="tab-btn" id="tabCameraBtn" onclick="openCameraScanner()">📷 Camera Scan</button>
+      </div>
+
+      <!-- Tab Content: Name & Barcode Search -->
+      <div id="tabName" class="tab-content">
+        <input type="text" id="searchInput" placeholder="Type product name or barcode..." 
+               style="width:100%;padding:10px;border:1px solid var(--border);border-radius:4px;margin-bottom:8px;"
+               autocomplete="off">
+        <button class="btn btn-primary" style="width:100%;" onclick="searchProducts()">Search Products</button>
+      </div>
+
+      <!-- Tab Content: Product ID Lookup -->
+      <div id="tabId" class="tab-content" style="display:none;">
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <input type="number" id="productIdInput" placeholder="Enter Product ID (e.g. 1, 2, 5)" 
+                 style="flex:1;padding:10px;border:1px solid var(--border);border-radius:4px;" min="1">
+          <button class="btn btn-primary" onclick="lookupProductId()">Add Item</button>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);">💡 Enter numeric Product ID directly to add to bill immediately.</div>
+      </div>
+
+      <div style="padding:0 12px 6px 12px;font-size:0.8rem;color:var(--muted);display:flex;justify-content:space-between;">
+        <span>Product Catalog</span>
+        <span id="productCount">0 items</span>
+      </div>
+
+      <ul class="product-list" id="productList"></ul>
+    </div>
+
+    <!-- Right: Cart & Billing Summary -->
+    <div class="panel">
+      <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Current Billing Items</span>
+        <span id="itemCount" style="font-weight:normal;color:var(--muted);font-size:0.85rem;">0 items</span>
+      </div>
+
+      <div style="flex:1;overflow:auto;">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product Name</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+      </div>
+
+      <div class="totals">
+        <div style="background: #e8f5e9; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #c8e6c9;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 700; font-size: 0.85rem; color: var(--primary-dark);">👤 Customer Purchase Link</span>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <select id="customerSelect" style="border:1px solid var(--border);padding:3px 6px;border-radius:4px;font-size:0.8rem;max-width:140px;" onchange="onCustomerSelectChange(this)">
+                <option value="Walk-in Customer">-- Pick Saved --</option>
+              </select>
+              <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="openQuickCustomerModal()">+ New</button>
+            </div>
+          </div>
+
+          <!-- Quick lookup by Customer ID or Mobile Number -->
+          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <input type="text" id="customerLookupInput" placeholder="Enter Customer ID or Mobile No..." 
+                   style="flex: 1; border: 1px solid var(--border); padding: 6px 8px; border-radius: 4px; font-size: 0.85rem;"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupCustomerByIdOrPhone();}">
+            <button type="button" class="btn btn-primary" style="padding: 5px 12px; font-size: 0.8rem;" onclick="lookupCustomerByIdOrPhone()">🔍 Find</button>
+          </div>
+
+          <div id="customerBadge" style="display:none; font-size:0.8rem; padding:6px 10px; background:#dcfce7; color:#166534; border-radius:4px; margin-bottom:8px; border:1px solid #bbf7d0;"></div>
+
+          <input type="hidden" id="selectedCustomerId" value="">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <input type="text" id="customerName" value="Walk-in Customer" placeholder="Customer Name" style="border:1px solid var(--border);padding:6px;border-radius:4px;font-size:0.85rem;" onfocus="if(this.value==='Walk-in Customer') this.value=''">
+            <input type="tel" id="customerPhone" placeholder="Mobile No. (e.g. 9876543210)" style="border:1px solid var(--border);padding:6px;border-radius:4px;font-size:0.85rem;">
+          </div>
+        </div>
+        <div class="row"><span>Subtotal:</span><span id="subtotal" style="font-weight:600;">Rs. 0.00</span></div>
+        <div class="row">
+          <span>Discount (Rs.):</span>
+          <input type="number" id="discount" value="0" min="0" step="1" style="width:90px;border:1px solid var(--border);padding:4px;border-radius:4px;text-align:right;" oninput="updateTotals()">
+        </div>
+        <div class="row"><span>Tax (5% GST):</span><span id="taxAmount">Rs. 0.00</span></div>
+        <div class="row grand"><span>GRAND TOTAL:</span><span id="grandTotal">Rs. 0.00</span></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-danger" onclick="removeSelected()">Remove Selected</button>
+        <button class="btn btn-secondary" onclick="clearCart()">Clear Bill</button>
+        <button class="btn btn-accent" style="padding:12px 24px;font-size:1rem;" onclick="openPaymentModal()">Proceed to Pay ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT CHECKOUT MODAL -->
+  <div class="modal-overlay" id="paymentModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>💳 Complete Payment - Rahul Stores</h3>
+        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align:center;margin-bottom:16px;background:var(--primary-light);padding:12px;border-radius:6px;">
+          <div style="font-size:0.85rem;color:var(--muted);">Amount Payable</div>
+          <div id="modalPayAmount" style="font-size:2rem;font-weight:bold;color:var(--primary);">Rs. 0.00</div>
+        </div>
+
+        <div style="font-weight:600;margin-bottom:8px;font-size:0.9rem;">Select Payment Method:</div>
+        <div class="payment-selector">
+          <div class="pay-option selected" id="optCASH" onclick="selectPaymentMode('CASH')">
+            💵 Cash
+          </div>
+          <div class="pay-option" id="optUPI" onclick="selectPaymentMode('UPI')">
+            📱 UPI / GPay QR
+          </div>
+          <div class="pay-option" id="optCARD" onclick="selectPaymentMode('CARD')">
+            💳 Card
+          </div>
+        </div>
+
+        <!-- Cash Mode Details -->
+        <div id="cashFields">
+          <div class="form-group">
+            <label>Cash Received from Customer (Rs.):</label>
+            <input type="number" id="cashTendered" placeholder="e.g. 500" oninput="calculateChange()" style="font-size:1.1rem;font-weight:bold;">
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;margin-top:10px;">
+            <span style="font-weight:600;color:#166534;">Change to Return:</span>
+            <span id="changeReturnText" style="font-size:1.2rem;font-weight:bold;color:#15803d;">Rs. 0.00</span>
+          </div>
+        </div>
+
+        <!-- UPI Mode Details -->
+        <div id="upiFields" style="display:none;">
+          <div class="qr-container">
+            <div style="font-weight:600;margin-bottom:8px;color:var(--primary);">Rahul Stores Google Pay / UPI QR Code</div>
+            <img id="rahulQrCodeImg" class="qr-img" src="/images/rahul_stores_qr.png" alt="Rahul Stores Google Pay QR Code" style="width:210px;height:210px;object-fit:contain;background:white;">
+            <div class="pulse-status"><span class="dot"></span> Scan QR code using GPay / PhonePe / Paytm / BHIM</div>
+            <div style="margin-top:8px;font-size:0.85rem;color:var(--muted);">Store: <strong style="color:var(--text);">Rahul Stores</strong></div>
+          </div>
+          <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="simulateUpiSuccess()">⚡ Confirm Payment Received</button>
+        </div>
+
+        <!-- Card Mode Details -->
+        <div id="cardFields" style="display:none;">
+          <div class="form-group">
+            <label>Card Type:</label>
+            <select id="cardType">
+              <option value="Visa">Visa Credit / Debit</option>
+              <option value="MasterCard">MasterCard</option>
+              <option value="RuPay">RuPay Card</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Last 4 Digits of Card:</label>
+            <input type="text" id="cardLastDigits" maxlength="4" placeholder="1234">
+          </div>
+          <div style="font-size:0.8rem;color:var(--muted);">Swipe or dip card on POS Card Terminal for pin authorization.</div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+        <button class="btn btn-primary" id="btnConfirmPay" onclick="submitFinalPayment()">Confirm & Generate Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMERA BARCODE SCANNER MODAL -->
+  <div class="modal-overlay" id="cameraModal">
+    <div class="modal-card" style="max-width:460px;">
+      <div class="modal-header">
+        <h3>📷 Live Camera Barcode Scanner</h3>
+        <button class="modal-close" onclick="closeCameraScanner()">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div id="cameraReader" style="width:100%;height:280px;background:#111;border-radius:6px;overflow:hidden;margin-bottom:10px;"></div>
+        <div id="scannerStatus" style="font-size:0.85rem;color:var(--muted);">Point your device camera at product barcode or QR code.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCameraScanner()">Close Scanner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECEIPT INVOICE MODAL -->
+  <div class="modal-overlay" id="receiptModal">
+    <div class="modal-card" style="max-width:500px;">
+      <div class="modal-header">
+        <h3>🧾 Tax Invoice Receipt</h3>
+        <button class="modal-close" onclick="closeReceiptModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="receipt-slip" id="receiptSlipContent">
+          <!-- Filled dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeReceiptModal()">Close</button>
+        <button class="btn btn-primary" onclick="printReceipt()">🖨️ Print Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Beep sound for barcode scanner -->
+  <audio id="beepSound" src="https://actions.google.com/sounds/v1/sounds_library/office/keyboard_typing_fast.ogg" preload="auto"></audio>
+
+  <script src="/js/api.js"></script>
+  <script>
+    const user = requireAuth();
+    document.getElementById('header').innerHTML = renderHeader('Rahul Stores POS', 'Smart Billing & Checkout');
+
+    let cart = [];
+    let selectedRow = -1;
+    let allProducts = [];
+    let currentPaymentMode = 'CASH';
+    let html5QrCodeScanner = null;
+
+    // --- INPUT TAB SWITCHING ---
+    function switchTab(tab) {
+      document.getElementById('tabName').style.display = tab === 'name' ? 'block' : 'none';
+      document.getElementById('tabId').style.display = tab === 'id' ? 'block' : 'none';
+      
+      document.getElementById('tabNameBtn').classList.toggle('active', tab === 'name');
+      document.getElementById('tabIdBtn').classList.toggle('active', tab === 'id');
+
+      if (tab === 'name') document.getElementById('searchInput').focus();
+      if (tab === 'id') document.getElementById('productIdInput').focus();
+    }
+
+    // --- PRODUCT LOOKUP & SEARCH ---
+    async function loadProducts() {
+      try {
+        allProducts = await apiGet('/products');
+        renderProductList(allProducts);
+        document.getElementById('productCount').textContent = allProducts.length + ' products';
+      } catch (err) { console.error(err); }
+    }
+
+    async function searchProducts() {
+      const q = document.getElementById('searchInput').value.trim();
+      try {
+        const products = await apiGet('/products/search?q=' + encodeURIComponent(q));
+        renderProductList(products);
+        if (products.length === 1) {
+          addToCart(products[0], 1);
+          document.getElementById('searchInput').value = '';
+        }
+      } catch (err) { alert(err.message); }
+    }
+
+    async function lookupProductId() {
+      const idVal = document.getElementById('productIdInput').value.trim();
+      if (!idVal) { alert('Please enter a Product ID'); return; }
+      try {
+        const product = await apiGet('/products/' + idVal);
+        addToCart(product, 1);
+        playBeep();
+        document.getElementById('productIdInput').value = '';
+        document.getElementById('productIdInput').focus();
+      } catch (err) {
+        alert('Product not found with ID: ' + idVal);
+      }
+    }
+
+    async function lookupBarcode(code) {
+      try {
+        const product = await apiGet('/products/barcode/' + code);
+        addToCart(product, 1);
+        playBeep();
+        document.getElementById('searchInput').value = '';
+      } catch (err) { alert('Product not found for barcode: ' + code); }
+    }
+
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = e.target.value.trim();
+        if (/^\d{8,}$/.test(val)) {
+          lookupBarcode(val);
+        } else if (/^\d{1,4}$/.test(val)) {
+          // If 1-4 digit numeric, lookup by product ID directly
+          document.getElementById('productIdInput').value = val;
+          lookupProductId();
+        } else {
+          searchProducts();
+        }
+      }
+    });
+
+    document.getElementById('productIdInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') lookupProductId();
+    });
+
+    // --- HARDWARE USB BARCODE SCANNER LISTENER ---
+    let lastKeyTime = Date.now();
+    let barcodeBuffer = '';
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && 
+          document.activeElement.id !== 'searchInput') {
+        return;
+      }
+      const currentTime = Date.now();
+      if (currentTime - lastKeyTime > 100) {
+        barcodeBuffer = '';
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (barcodeBuffer.length >= 4) {
+          lookupBarcode(barcodeBuffer);
+          barcodeBuffer = '';
+        }
+      } else if (e.key.length === 1) {
+        barcodeBuffer += e.key;
+      }
+    });
+
+    // --- CAMERA BARCODE SCANNER ---
+    function openCameraScanner() {
+      document.getElementById('cameraModal').classList.add('active');
+      document.getElementById('scannerStatus').textContent = 'Starting camera...';
+      
+      if (typeof Html5Qrcode === 'undefined') {
+        document.getElementById('cameraReader').innerHTML = `
+          <div style="padding:40px 20px;color:#d97706;">
+            💡 Camera scanner requires internet connection.<br>You can still add items using Product ID or Barcode typing!
+          </div>`;
+        return;
+      }
+
+      try {
+        html5QrCodeScanner = new Html5Qrcode("cameraReader");
+        html5QrCodeScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            playBeep();
+            document.getElementById('scannerStatus').textContent = 'Scanned: ' + decodedText;
+            lookupBarcode(decodedText);
+            closeCameraScanner();
+          },
+          (errorMessage) => { /* scanning... */ }
+        ).catch(err => {
+          document.getElementById('cameraReader').innerHTML = `
+            <div style="padding:40px 20px;color:#ef4444;">
+              ⚠️ Camera access denied or not found.<br>You can still use USB scanner or manual typing.
+            </div>`;
+        });
+      } catch (err) {
+        document.getElementById('scannerStatus').textContent = 'Camera scanner error: ' + err.message;
+      }
+    }
+
+    function closeCameraScanner() {
+      if (html5QrCodeScanner) {
+        html5QrCodeScanner.stop().catch(() => {}).then(() => {
+          html5QrCodeScanner.clear();
+          html5QrCodeScanner = null;
+        });
+      }
+      document.getElementById('cameraModal').classList.remove('active');
+    }
+
+    function playBeep() {
+      try {
+        const audio = document.getElementById('beepSound');
+        if (audio) { audio.currentTime = 0; audio.play().catch(()=>{}); }
+      } catch(e) {}
+    }
+
+    // --- CART MANAGEMENT ---
+    function renderProductList(products) {
+      const list = document.getElementById('productList');
+      list.innerHTML = products.map(p => `
+        <li class="product-item" data-id="${p.productId}">
+          <div class="name"><span class="id-badge">ID #${p.productId}</span> ${p.productName}</div>
+          <div class="meta">Barcode: ${p.barcode} | Stock: ${p.stockQty} ${p.unit} | <strong>${formatCurrency(p.price)}</strong></div>
+        </li>
+      `).join('');
+
+      list.querySelectorAll('.product-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const product = allProducts.find(p => p.productId === parseInt(el.dataset.id));
+          if (product) addToCart(product, 1);
+        });
+      });
+    }
+
+    function addToCart(product, qty) {
+      if (product.stockQty < qty) {
+        alert('Insufficient stock for ' + product.productName + '! Available: ' + product.stockQty);
+        return;
+      }
+      const existing = cart.find(i => i.productId === product.productId);
+      if (existing) {
+        if (existing.quantity + qty > product.stockQty) {
+          alert('Insufficient stock!');
+          return;
+        }
+        existing.quantity += qty;
+        existing.lineTotal = existing.unitPrice * existing.quantity;
+      } else {
+        cart.push({
+          productId: product.productId,
+          productName: product.productName,
+          barcode: product.barcode,
+          quantity: qty,
+          unitPrice: product.price,
+          lineTotal: product.price * qty
+        });
+      }
+      renderCart();
+    }
+
+    function renderCart() {
+      const tbody = document.getElementById('cartBody');
+      tbody.innerHTML = cart.map((item, i) => `
+        <tr onclick="selectRow(${i})" style="${selectedRow === i ? 'background:var(--primary-light);font-weight:bold;' : ''}">
+          <td>${i + 1}</td>
+          <td>${item.productName}</td>
+          <td>
+            <input type="number" value="${item.quantity}" min="1" style="width:55px;padding:2px;text-align:center;" 
+                   onchange="updateCartQty(${i}, this.value)" onclick="event.stopPropagation()">
+          </td>
+          <td>${formatCurrency(item.unitPrice)}</td>
+          <td>${formatCurrency(item.lineTotal)}</td>
+        </tr>
+      `).join('');
+
+      const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
+      document.getElementById('itemCount').textContent = totalItems + ' items';
+      updateTotals();
+    }
+
+    function updateCartQty(index, newQty) {
+      const q = parseInt(newQty);
+      if (isNaN(q) || q < 1) return;
+      const product = allProducts.find(p => p.productId === cart[index].productId);
+      if (product && q > product.stockQty) {
+        alert('Stock limit exceeded!');
+        renderCart();
+        return;
+      }
+      cart[index].quantity = q;
+      cart[index].lineTotal = cart[index].unitPrice * q;
+      renderCart();
+    }
+
+    function selectRow(i) { selectedRow = i; renderCart(); }
+
+    function removeSelected() {
+      if (selectedRow >= 0) {
+        cart.splice(selectedRow, 1);
+        selectedRow = -1;
+        renderCart();
+      } else {
+        alert('Click a cart row to select it for removal.');
+      }
+    }
+
+    function clearCart() {
+      if (cart.length === 0) return;
+      if (confirm('Clear all items from current bill?')) {
+        cart = [];
+        selectedRow = -1;
+        document.getElementById('discount').value = 0;
+        renderCart();
+      }
+    }
+
+    function updateTotals() {
+      const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
+      const discount = parseFloat(document.getElementById('discount').value) || 0;
+      const taxable = Math.max(0, subtotal - discount);
+      const tax = taxable * 0.05;
+      const grand = taxable + tax;
+
+      document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+      document.getElementById('taxAmount').textContent = formatCurrency(tax);
+      document.getElementById('grandTotal').textContent = formatCurrency(grand);
+      return { subtotal, discount, tax, grand };
+    }
+
+    // --- CHECKOUT & PAYMENT MODAL FLOW ---
+    function openPaymentModal() {
+      if (cart.length === 0) {
+        alert('Please add at least one product to the bill before checkout.');
+        return;
+      }
+      const { grand } = updateTotals();
+      document.getElementById('modalPayAmount').textContent = formatCurrency(grand);
+      document.getElementById('cashTendered').value = Math.ceil(grand);
+      calculateChange();
+      selectPaymentMode('CASH');
+      document.getElementById('paymentModal').classList.add('active');
+    }
+
+    function closePaymentModal() {
+      document.getElementById('paymentModal').classList.remove('active');
+    }
+
+    function selectPaymentMode(mode) {
+      currentPaymentMode = mode;
+      document.querySelectorAll('.pay-option').forEach(el => el.classList.remove('selected'));
+      document.getElementById('opt' + mode).classList.add('selected');
+
+      document.getElementById('cashFields').style.display = mode === 'CASH' ? 'block' : 'none';
+      document.getElementById('upiFields').style.display = mode === 'UPI' ? 'block' : 'none';
+      document.getElementById('cardFields').style.display = mode === 'CARD' ? 'block' : 'none';
+    }
+
+    function calculateChange() {
+      const { grand } = updateTotals();
+      const cash = parseFloat(document.getElementById('cashTendered').value) || 0;
+      const change = cash - grand;
+      const elem = document.getElementById('changeReturnText');
+      if (change >= 0) {
+        elem.textContent = formatCurrency(change);
+        elem.style.color = '#15803d';
+      } else {
+        elem.textContent = 'Insufficient Cash (' + formatCurrency(Math.abs(change)) + ' short)';
+        elem.style.color = '#dc2626';
+      }
+    }
+
+    function simulateUpiSuccess() {
+      alert('✅ UPI Payment scan verified successfully!');
+      submitFinalPayment();
+    }
+
+    async function submitFinalPayment() {
+      const { grand } = updateTotals();
+      const discount = parseFloat(document.getElementById('discount').value) || 0;
+
+      let custName = document.getElementById('customerName').value.trim() || 'Walk-in Customer';
+      let custPhone = document.getElementById('customerPhone').value.trim();
+      let custIdVal = document.getElementById('selectedCustomerId').value.trim();
+
+      let paymentReq = {
+        cashierId: user.userId,
+        customerId: custIdVal ? parseInt(custIdVal) : null,
+        customerName: custName,
+        customerPhone: custPhone,
+        items: cart,
+        discount: discount,
+        paymentMode: currentPaymentMode
+      };
+
+      if (currentPaymentMode === 'CASH') {
+        const cashTendered = parseFloat(document.getElementById('cashTendered').value) || 0;
+        if (cashTendered < grand) {
+          alert('Cash received is less than total amount!');
+          return;
+        }
+        paymentReq.cashTendered = cashTendered;
+      } else if (currentPaymentMode === 'UPI') {
+        paymentReq.upiId = 'rahulstores@upi';
+        paymentReq.transactionRef = 'UPI-' + Math.floor(100000 + Math.random() * 900000);
+      } else if (currentPaymentMode === 'CARD') {
+        paymentReq.cardType = document.getElementById('cardType').value;
+        paymentReq.lastFourDigits = document.getElementById('cardLastDigits').value || '4321';
+      }
+
+      try {
+        const response = await apiPost('/bills', paymentReq);
+        closePaymentModal();
+        showReceipt(response);
+      } catch (err) {
+        alert('Payment processing failed: ' + err.message);
+      }
+    }
+
+    // --- RECEIPT MODAL & PRINTING ---
+    function showReceipt(billData) {
+      const dateStr = new Date().toLocaleString();
+      const itemsHtml = cart.map((item, i) => `
+        <tr>
+          <td>${i+1}. ${item.productName}</td>
+          <td style="text-align:center">${item.quantity}</td>
+          <td style="text-align:right">${formatCurrency(item.unitPrice)}</td>
+          <td style="text-align:right">${formatCurrency(item.lineTotal)}</td>
+        </tr>
+      `).join('');
+
+      const html = `
+        <div class="receipt-header">
+          <h2>RAHUL STORES</h2>
+          <div>Main Market Road, City</div>
+          <div>GSTIN: 33AAAAA0000A1Z5 | Ph: 9876543210</div>
+        </div>
+        <div class="receipt-meta">
+          <div><strong>Bill No:</strong> ${billData.billNumber}</div>
+          <div><strong>Date:</strong> ${dateStr}</div>
+          <div><strong>Cashier:</strong> ${user.fullName}</div>
+          <div><strong>Customer:</strong> ${billData.customerName || document.getElementById('customerName').value} ${billData.customerId ? '(ID #' + billData.customerId + ')' : ''} ${billData.customerPhone ? ' | ' + billData.customerPhone : ''}</div>
+          <div><strong>Payment Mode:</strong> ${billData.paymentMode} (${billData.transactionId})</div>
+        </div>
+        <table class="receipt-items">
+          <thead>
+            <tr>
+              <th style="width:45%">Item</th>
+              <th style="width:15%;text-align:center">Qty</th>
+              <th style="width:20%;text-align:right">Price</th>
+              <th style="width:20%;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="receipt-totals">
+          <div class="r-row"><span>Subtotal:</span><span>${formatCurrency(billData.subtotal)}</span></div>
+          <div class="r-row"><span>Discount:</span><span>-${formatCurrency(billData.discount)}</span></div>
+          <div class="r-row"><span>GST Tax (5%):</span><span>${formatCurrency(billData.taxAmount)}</span></div>
+          <div class="r-row r-grand"><span>GRAND TOTAL:</span><span>${formatCurrency(billData.grandTotal)}</span></div>
+          <div class="r-row" style="font-size:0.8rem;color:#444;margin-top:6px;">
+            <span>Details:</span><span>${billData.paymentDetails}</span>
+          </div>
+        </div>
+        <div class="receipt-footer">
+          <img src="/images/rahul_stores_qr.png" style="width:110px;height:110px;margin-bottom:4px;object-fit:contain;" alt="Rahul Stores QR"><br>
+          Scan QR to pay / verify invoice authenticity<br>
+          <strong>*** Thank You For Shopping At Rahul Stores! ***</strong>
+        </div>
+      `;
+
+      document.getElementById('receiptSlipContent').innerHTML = html;
+      document.getElementById('receiptModal').classList.add('active');
+
+      cart = [];
+      selectedRow = -1;
+      document.getElementById('discount').value = 0;
+      document.getElementById('customerName').value = 'Walk-in Customer';
+      renderCart();
+      loadProducts();
+    }
+
+    function closeReceiptModal() {
+      document.getElementById('receiptModal').classList.remove('active');
+    }
+
+    function printReceipt() {
+      window.print();
+    }
+
+    async function loadCustomerOptions(selectedPhone) {
+      try {
+        const customers = await apiGet('/customers');
+        const select = document.getElementById('customerSelect');
+        if (select && customers) {
+          select.innerHTML = '<option value="" data-id="" data-name="Walk-in Customer" data-phone="">-- Pick Saved Customer --</option>' +
+            customers.map(c => `<option value="${c.customerId}" data-id="${c.customerId}" data-name="${escapeHtml(c.name)}" data-phone="${escapeHtml(c.phone)}">#${c.customerId} - ${c.name} (${c.phone})</option>`).join('');
+          
+          if (selectedPhone) {
+            const found = Array.from(select.options).find(opt => opt.getAttribute('data-phone') === selectedPhone);
+            if (found) {
+              select.value = found.value;
+              onCustomerSelectChange(select);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    function onCustomerSelectChange(select) {
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption) {
+        const id = selectedOption.getAttribute('data-id');
+        const name = selectedOption.getAttribute('data-name');
+        const phone = selectedOption.getAttribute('data-phone');
+        document.getElementById('selectedCustomerId').value = id || '';
+        if (name) document.getElementById('customerName').value = name;
+        if (phone !== null) document.getElementById('customerPhone').value = phone || '';
+
+        const badge = document.getElementById('customerBadge');
+        if (id) {
+          badge.style.display = 'block';
+          badge.innerHTML = `✅ Linked to: <strong>${escapeHtml(name)}</strong> (Customer ID #${id}) | 📞 ${escapeHtml(phone)}`;
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    }
+
+    async function lookupCustomerByIdOrPhone() {
+      const query = document.getElementById('customerLookupInput').value.trim();
+      const badge = document.getElementById('customerBadge');
+      if (!query) {
+        badge.style.display = 'block';
+        badge.style.background = '#fef2f2';
+        badge.style.color = '#991b1b';
+        badge.style.borderColor = '#fecaca';
+        badge.textContent = 'Please enter Customer ID or Mobile Number to search.';
+        return;
+      }
+
+      badge.style.display = 'block';
+      badge.style.background = '#eff6ff';
+      badge.style.color = '#1e40af';
+      badge.style.borderColor = '#bfdbfe';
+      badge.textContent = 'Searching customer...';
+
+      try {
+        const res = await fetch(`/api/customers/lookup?query=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const c = data.customer;
+          const purchaseCount = data.totalPurchases || 0;
+          document.getElementById('selectedCustomerId').value = c.customerId;
+          document.getElementById('customerName').value = c.name;
+          document.getElementById('customerPhone').value = c.phone;
+
+          badge.style.background = '#dcfce7';
+          badge.style.color = '#166534';
+          badge.style.borderColor = '#bbf7d0';
+          badge.innerHTML = `✅ <strong>${escapeHtml(c.name)}</strong> (Customer ID #${c.customerId}) | 📞 ${escapeHtml(c.phone)} | Previous Purchases: <strong>${purchaseCount}</strong>`;
+
+          // Also match select box if possible
+          const select = document.getElementById('customerSelect');
+          if (select) select.value = c.customerId;
+        } else {
+          document.getElementById('selectedCustomerId').value = '';
+          badge.style.background = '#fffbeb';
+          badge.style.color = '#92400e';
+          badge.style.borderColor = '#fde68a';
+          badge.innerHTML = `ℹ️ No existing customer for "${escapeHtml(query)}". If you enter their name & mobile, purchase will auto-register them!`;
+        }
+      } catch (err) {
+        badge.style.background = '#fef2f2';
+        badge.style.color = '#991b1b';
+        badge.style.borderColor = '#fecaca';
+        badge.textContent = 'Lookup error: ' + err.message;
+      }
+    }
+
+    function openQuickCustomerModal() {
+      document.getElementById('qNameInput').value = '';
+      document.getElementById('qPhoneInput').value = '';
+      document.getElementById('qEmailInput').value = '';
+      document.getElementById('qAddressInput').value = '';
+      document.getElementById('quickCustomerError').textContent = '';
+      document.getElementById('quickCustomerModal').classList.add('active');
+    }
+
+    function closeQuickCustomerModal() {
+      document.getElementById('quickCustomerModal').classList.remove('active');
+    }
+
+    async function saveQuickCustomer(e) {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('qNameInput').value.trim(),
+        phone: document.getElementById('qPhoneInput').value.trim(),
+        email: document.getElementById('qEmailInput').value.trim(),
+        address: document.getElementById('qAddressInput').value.trim()
+      };
+
+      const errDiv = document.getElementById('quickCustomerError');
+      errDiv.textContent = '';
+
+      try {
+        const res = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const newCust = await res.json();
+          closeQuickCustomerModal();
+          await loadCustomerOptions(newCust.phone);
+        } else {
+          const err = await res.json();
+          errDiv.textContent = err.error || 'Failed to save customer';
+        }
+      } catch (e) {
+        errDiv.textContent = 'Error saving customer';
+      }
+    }
+
+    loadProducts();
+    loadCustomerOptions();
+  </script>
+
+  <!-- QUICK ADD CUSTOMER MODAL FOR BILLING -->
+  <div class="modal-overlay" id="quickCustomerModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3>👤 Add Customer while Billing</h3>
+        <button class="modal-close" onclick="closeQuickCustomerModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="quickCustomerForm" onsubmit="saveQuickCustomer(event)">
+          <div class="form-group">
+            <label for="qNameInput">Customer Full Name *</label>
+            <input type="text" id="qNameInput" placeholder="e.g. Ramesh Kumar" required>
+          </div>
+          <div class="form-group">
+            <label for="qPhoneInput">Phone Number *</label>
+            <input type="tel" id="qPhoneInput" placeholder="e.g. 9876543210" required>
+          </div>
+          <div class="form-group">
+            <label for="qEmailInput">Email Address (Optional)</label>
+            <input type="email" id="qEmailInput" placeholder="e.g. customer@example.com">
+          </div>
+          <div class="form-group">
+            <label for="qAddressInput">Address (Optional)</label>
+            <input type="text" id="qAddressInput" placeholder="Street / City address">
+          </div>
+          <div id="quickCustomerError" class="error-msg"></div>
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top: 16px;">
+            <button type="button" class="btn btn-secondary" onclick="closeQuickCustomerModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save & Select</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

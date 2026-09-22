@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monthly Income, Tax & Profit/Loss Calculator - Rahul Stores POS</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="container">
+    <!-- Title & Action Bar -->
+    <div class="page-title-bar">
+      <div>
+        <h2>📊 Monthly Income, Tax & Profit/Loss Calculator</h2>
+        <p class="hint">Calculate total monthly revenue, monitor tax collected, track money spent (rent, electric, purchases, other), and view net profit/loss.</p>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn btn-primary" id="recordExpenseBtn" onclick="openExpenseModal()">+ Record Expense / Money Spent</button>
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Statement</button>
+      </div>
+    </div>
+
+    <!-- Filter Bar: Month & Year Selector -->
+    <div class="filter-bar">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label for="monthSelect" style="font-weight: 600; font-size: 0.9rem;">Select Month:</label>
+        <select id="monthSelect" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-weight: 600;" onchange="loadMonthlyReport()">
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6">June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label for="yearInput" style="font-weight: 600; font-size: 0.9rem;">Year:</label>
+        <input type="number" id="yearInput" style="width: 90px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;" min="2020" max="2035" onchange="loadMonthlyReport()">
+      </div>
+
+      <button class="btn btn-primary" style="padding: 8px 16px;" onclick="loadMonthlyReport()">Calculate</button>
+
+      <div style="margin-left: auto; display: flex; gap: 8px;">
+        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(-1)">◀ Prev Month</button>
+        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="setCurrentMonth()">This Month</button>
+        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(1)">Next Month ▶</button>
+      </div>
+    </div>
+
+    <div class="printable-area">
+      <!-- High Level Financial KPI Cards -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <!-- 1. Total Income -->
+        <div class="stat-card green">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="label">💰 Total Monthly Income (Sales)</div>
+            <span class="badge-pill badge-salary" style="font-size: 0.7rem;">REVENUE</span>
+          </div>
+          <div class="value" id="totalIncomeVal">Rs. 0.00</div>
+          <div class="hint" id="incomeSubtitle" style="margin-top: 6px; font-size: 0.82rem;">0 bills issued</div>
+        </div>
+
+        <!-- 2. Tax -->
+        <div class="stat-card tax">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="label" style="font-weight: 700; color: #0284c7;">🧾 Tax</div>
+            <span class="badge-pill" style="background: #e0f2fe; color: #0284c7; font-size: 0.7rem;">TAX</span>
+          </div>
+          <div class="value" id="totalTaxVal">Rs. 0.00</div>
+          <div class="hint" style="margin-top: 6px; font-size: 0.82rem; color: #0369a1;">
+            Tax collected from customer bills
+          </div>
+        </div>
+
+        <!-- 3. Money Spent (Expenses) -->
+        <div class="stat-card expense">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="label">💸 Total Money Spent (Expenses)</div>
+            <span class="badge-pill badge-admin" style="font-size: 0.7rem;">OUTGOING</span>
+          </div>
+          <div class="value" id="totalExpensesVal">Rs. 0.00</div>
+          <div class="hint" id="expenseSummaryHint" style="margin-top: 6px; font-size: 0.82rem;">Rent, Electric, Purchases & Other</div>
+        </div>
+
+        <!-- 4. Profit & Loss -->
+        <div class="stat-card" id="pnlCard">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="label" style="font-weight: 700;">📈 Net Profit / Loss</div>
+            <span id="pnlStatusBadge" class="profit-badge-large profit" style="font-size: 0.75rem; padding: 2px 8px;">CALCULATING</span>
+          </div>
+          <div class="value" id="netPnlVal">Rs. 0.00</div>
+          <div class="hint" id="profitMarginHint" style="margin-top: 6px; font-size: 0.82rem; font-weight: 600;">Net Margin: 0%</div>
+        </div>
+      </div>
+
+      <!-- Category Breakdown Pills for Expenses -->
+      <div class="card" style="margin-bottom: 24px; padding: 16px 20px;">
+        <h4 style="font-size: 0.95rem; color: var(--muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+          Expense Categories Breakdown:
+        </h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <div class="badge-pill badge-rent" style="font-size: 0.85rem; padding: 6px 14px;">
+            🏢 Rent: <strong id="catRentVal">Rs. 0.00</strong>
+          </div>
+          <div class="badge-pill badge-electric" style="font-size: 0.85rem; padding: 6px 14px;">
+            ⚡ Electric Bill: <strong id="catElectricVal">Rs. 0.00</strong>
+          </div>
+          <div class="badge-pill badge-purchase" style="font-size: 0.85rem; padding: 6px 14px;">
+            📦 Purchases / Stock: <strong id="catPurchaseVal">Rs. 0.00</strong>
+          </div>
+          <div class="badge-pill badge-salary" style="font-size: 0.85rem; padding: 6px 14px;">
+            👥 Salary / Wages: <strong id="catSalaryVal">Rs. 0.00</strong>
+          </div>
+          <div class="badge-pill badge-other" style="font-size: 0.85rem; padding: 6px 14px;">
+            📝 Other (with reason): <strong id="catOtherVal">Rs. 0.00</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Columns: Left = Money Spent (Expenses), Right = Detailed Income (Bills) -->
+      <div style="display: grid; grid-template-columns: 1fr; gap: 24px;">
+
+        <!-- 1. Money Spent / Expenses Card -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h3>💸 Money Spent & Expense Records</h3>
+              <p class="hint">Rent, electricity, store purchases, and custom expenses (requires reason for Other).</p>
+            </div>
+            <button class="btn btn-accent" style="font-size: 0.85rem; padding: 6px 12px;" onclick="openExpenseModal()">+ Add Expense</button>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Reason / Description</th>
+                  <th>Payment Mode</th>
+                  <th>Amount</th>
+                  <th>Recorded By</th>
+                  <th style="text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="expensesTableBody">
+                <tr><td colspan="7" style="text-align:center; padding: 16px; color: var(--muted);">Loading expenses...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. Detailed Income / Customer Bills -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h3>🛒 Income Details (Customer Bills for the Month)</h3>
+              <p class="hint">All customer invoices with taxable amounts and tax collected.</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="text" id="billSearchInput" placeholder="Search bill # or customer..." style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem;" oninput="filterBillsTable()">
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; max-height: 420px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Bill #</th>
+                  <th>Date & Time</th>
+                  <th>Customer</th>
+                  <th>Mode</th>
+                  <th>Subtotal</th>
+                  <th>Discount</th>
+                  <th style="background: #0284c7;">Tax</th>
+                  <th>Grand Total</th>
+                </tr>
+              </thead>
+              <tbody id="billsTableBody">
+                <tr><td colspan="8" style="text-align:center; padding: 16px; color: var(--muted);">Loading bills...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Monthly Financial & Tax Statement (Printable Summary) -->
+        <div class="statement-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <div>
+              <h3 style="margin-bottom: 4px;">📑 Monthly Profit & Loss Statement & Tax Summary</h3>
+              <p class="hint" id="statementPeriodTitle">Statement Period</p>
+            </div>
+            <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" onclick="window.print()">Print Report</button>
+          </div>
+
+          <div class="statement-row">
+            <span><strong>(+) Gross Sales Revenue (Income)</strong></span>
+            <strong id="stmtGrossIncome">Rs. 0.00</strong>
+          </div>
+          <div class="statement-row" style="color: #0284c7; background: #f0f9ff; padding-left: 8px; padding-right: 8px;">
+            <span><strong>(ℹ) Total Tax</strong></span>
+            <strong id="stmtTaxAmount">Rs. 0.00</strong>
+          </div>
+          <div class="statement-row" style="color: #dc2626;">
+            <span>(-) Store Rent</span>
+            <span id="stmtRent">Rs. 0.00</span>
+          </div>
+          <div class="statement-row" style="color: #dc2626;">
+            <span>(-) Electricity & Utility Bills</span>
+            <span id="stmtElectric">Rs. 0.00</span>
+          </div>
+          <div class="statement-row" style="color: #dc2626;">
+            <span>(-) Wholesale Purchases & Inventory Restock</span>
+            <span id="stmtPurchases">Rs. 0.00</span>
+          </div>
+          <div class="statement-row" style="color: #dc2626;">
+            <span>(-) Staff Salary & Wages</span>
+            <span id="stmtSalary">Rs. 0.00</span>
+          </div>
+          <div class="statement-row" style="color: #dc2626;">
+            <span>(-) Other Money Spent (with reasons)</span>
+            <span id="stmtOther">Rs. 0.00</span>
+          </div>
+          <div class="statement-row" style="border-top: 1px solid var(--border); font-weight: 600;">
+            <span><strong>Total Outgoing Expenses</strong></span>
+            <strong id="stmtTotalExpenses" style="color: #dc2626;">Rs. 0.00</strong>
+          </div>
+          <div class="statement-row total" id="stmtPnlRow">
+            <span><strong>(=) NET PROFIT / (LOSS)</strong></span>
+            <strong id="stmtNetPnl">Rs. 0.00</strong>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Add Expense Modal -->
+  <div class="modal-overlay" id="expenseModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="expenseModalTitle">Record Money Spent / Expense</h3>
+        <button class="modal-close" onclick="closeExpenseModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="expenseForm" onsubmit="saveExpense(event)">
+          <div class="form-group">
+            <label for="expenseDateInput">Expense Date *</label>
+            <input type="date" id="expenseDateInput" required>
+          </div>
+
+          <div class="form-group">
+            <label for="expenseCategorySelect">Expense Category *</label>
+            <select id="expenseCategorySelect" required onchange="handleCategoryChange()">
+              <option value="Rent">Rent</option>
+              <option value="Electric Bill">Electric Bill</option>
+              <option value="Purchases">Purchases / Inventory Restock</option>
+              <option value="Salary">Salary / Wages</option>
+              <option value="Other">Other (Requires Reason)</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="descriptionGroup">
+            <label for="expenseDescriptionInput" id="descriptionLabel">
+              Reason / Description
+            </label>
+            <textarea id="expenseDescriptionInput" rows="2" placeholder="e.g. Monthly shop rent" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;"></textarea>
+            <div id="otherReasonWarning" class="hint" style="display: none; color: var(--danger); margin-top: 4px; font-weight: 600;">
+              ⚠️ When choosing 'Other', you must provide a reason explaining the money spent.
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="expenseAmountInput">Amount (Rs.) *</label>
+              <input type="number" id="expenseAmountInput" step="0.01" min="0.01" placeholder="0.00" required>
+            </div>
+
+            <div class="form-group">
+              <label for="expensePaymentMode">Payment Method</label>
+              <select id="expensePaymentMode">
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI / GooglePay</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="CARD">Card</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="expenseModalError" class="error-msg" style="display:none; margin-bottom: 12px;"></div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top: 16px;">
+            <button type="button" class="btn btn-secondary" onclick="closeExpenseModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveExpenseBtn">Save Expense</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const user = requireAuth();
+    document.getElementById('header').innerHTML = renderHeader('Monthly Income & Tax', 'Track revenue, tax, expenses & profit/loss');
+
+    let currentBills = [];
+    let currentReport = null;
+
+    function initFilters() {
+      const now = new Date();
+      document.getElementById('yearInput').value = now.getFullYear();
+      document.getElementById('monthSelect').value = (now.getMonth() + 1).toString();
+      document.getElementById('expenseDateInput').value = now.toISOString().split('T')[0];
+    }
+
+    function setCurrentMonth() {
+      const now = new Date();
+      document.getElementById('yearInput').value = now.getFullYear();
+      document.getElementById('monthSelect').value = (now.getMonth() + 1).toString();
+      loadMonthlyReport();
+    }
+
+    function changeMonth(delta) {
+      let month = parseInt(document.getElementById('monthSelect').value) + delta;
+      let year = parseInt(document.getElementById('yearInput').value);
+
+      if (month < 1) {
+        month = 12;
+        year -= 1;
+      } else if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+
+      document.getElementById('monthSelect').value = month.toString();
+      document.getElementById('yearInput').value = year;
+      loadMonthlyReport();
+    }
+
+    async function loadMonthlyReport() {
+      const year = document.getElementById('yearInput').value;
+      const month = document.getElementById('monthSelect').value;
+      const monthName = document.getElementById('monthSelect').options[document.getElementById('monthSelect').selectedIndex].text;
+
+      document.getElementById('statementPeriodTitle').textContent = `Statement for ${monthName} ${year}`;
+
+      try {
+        const data = await apiGet(`/finance/monthly?year=${year}&month=${month}`);
+        currentReport = data;
+        currentBills = data.bills || [];
+
+        // Update Top Cards
+        document.getElementById('totalIncomeVal').textContent = formatCurrency(data.totalSales);
+        document.getElementById('incomeSubtitle').textContent = `${data.billCount} bills issued (Gross: ${formatCurrency(data.totalSubtotal)})`;
+
+        document.getElementById('totalTaxVal').textContent = formatCurrency(data.totalTax);
+        document.getElementById('totalExpensesVal').textContent = formatCurrency(data.totalExpenses);
+
+        // Profit / Loss Calculation & Styling
+        const pnlCard = document.getElementById('pnlCard');
+        const pnlBadge = document.getElementById('pnlStatusBadge');
+        const netVal = document.getElementById('netPnlVal');
+        const marginHint = document.getElementById('profitMarginHint');
+
+        if (data.totalSales === 0 && data.totalExpenses === 0) {
+          netVal.textContent = 'Rs. 0.00';
+          marginHint.textContent = 'Add money spent / expenses to calculate profit & loss';
+          pnlCard.className = 'stat-card';
+          pnlBadge.className = 'profit-badge-large';
+          pnlBadge.style.background = '#f1f5f9';
+          pnlBadge.style.color = '#475569';
+          pnlBadge.style.borderColor = '#cbd5e1';
+          pnlBadge.textContent = 'START (Rs. 0)';
+        } else {
+          pnlBadge.style.background = '';
+          pnlBadge.style.color = '';
+          pnlBadge.style.borderColor = '';
+          netVal.textContent = (data.netProfitLoss >= 0 ? '+ ' : '- ') + formatCurrency(Math.abs(data.netProfitLoss));
+          marginHint.textContent = `Profit Margin: ${data.profitMargin}%`;
+
+          pnlCard.className = 'stat-card ' + (data.isProfit ? 'profit' : 'loss');
+          pnlBadge.className = 'profit-badge-large ' + (data.isProfit ? 'profit' : 'loss');
+          pnlBadge.textContent = data.isProfit ? `PROFIT (+${formatCurrency(data.netProfitLoss)})` : `LOSS (-${formatCurrency(Math.abs(data.netProfitLoss))})`;
+        }
+
+        // Category pills
+        document.getElementById('catRentVal').textContent = formatCurrency(data.rentExpenses || 0);
+        document.getElementById('catElectricVal').textContent = formatCurrency(data.electricExpenses || 0);
+        document.getElementById('catPurchaseVal').textContent = formatCurrency(data.purchaseExpenses || 0);
+        document.getElementById('catSalaryVal').textContent = formatCurrency(data.salaryExpenses || 0);
+        document.getElementById('catOtherVal').textContent = formatCurrency(data.otherExpenses || 0);
+
+        // Statement rows
+        document.getElementById('stmtGrossIncome').textContent = formatCurrency(data.totalSales);
+        document.getElementById('stmtTaxAmount').textContent = formatCurrency(data.totalTax);
+        document.getElementById('stmtRent').textContent = formatCurrency(data.rentExpenses || 0);
+        document.getElementById('stmtElectric').textContent = formatCurrency(data.electricExpenses || 0);
+        document.getElementById('stmtPurchases').textContent = formatCurrency(data.purchaseExpenses || 0);
+        document.getElementById('stmtSalary').textContent = formatCurrency(data.salaryExpenses || 0);
+        document.getElementById('stmtOther').textContent = formatCurrency(data.otherExpenses || 0);
+        document.getElementById('stmtTotalExpenses').textContent = formatCurrency(data.totalExpenses);
+        
+        const stmtPnl = document.getElementById('stmtNetPnl');
+        if (data.totalSales === 0 && data.totalExpenses === 0) {
+          stmtPnl.textContent = 'Rs. 0.00';
+          stmtPnl.style.color = 'inherit';
+        } else {
+          stmtPnl.textContent = (data.netProfitLoss >= 0 ? '+ ' : '- ') + formatCurrency(Math.abs(data.netProfitLoss));
+          stmtPnl.style.color = data.isProfit ? '#16a34a' : '#e11d48';
+        }
+
+        // Render Tables
+        renderExpensesTable(data.expenses || []);
+        renderBillsTable(currentBills);
+
+      } catch (err) {
+        console.error('Failed to load monthly report', err);
+        alert('Error loading monthly finance data: ' + err.message);
+      }
+    }
+
+    function renderExpensesTable(expenses) {
+      const tbody = document.getElementById('expensesTableBody');
+      if (!expenses || expenses.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--muted);">No expenses recorded for this month. Click "+ Add Expense" to record one.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = expenses.map(e => {
+        let badgeClass = 'badge-other';
+        const catLower = (e.category || '').toLowerCase();
+        if (catLower.includes('rent')) badgeClass = 'badge-rent';
+        else if (catLower.includes('electric') || catLower.includes('power')) badgeClass = 'badge-electric';
+        else if (catLower.includes('purchase') || catLower.includes('stock')) badgeClass = 'badge-purchase';
+        else if (catLower.includes('salary') || catLower.includes('wage')) badgeClass = 'badge-salary';
+
+        return `
+          <tr>
+            <td><strong>${e.expenseDate}</strong></td>
+            <td><span class="badge-pill ${badgeClass}">${escapeHtml(e.category)}</span></td>
+            <td>
+              <strong>${escapeHtml(e.description || '—')}</strong>
+              ${catLower === 'other' ? '<span style="color:var(--accent); font-size:0.75rem; margin-left:4px;">(Reason Given)</span>' : ''}
+            </td>
+            <td><code>${escapeHtml(e.paymentMode || 'CASH')}</code></td>
+            <td style="color: #dc2626; font-weight: 700;">${formatCurrency(e.amount)}</td>
+            <td><span style="font-size: 0.85rem; color: var(--muted);">${escapeHtml(e.recordedByName || 'Staff')}</span></td>
+            <td style="text-align: right;">
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.78rem;" onclick="deleteExpenseRecord(${e.expenseId})">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderBillsTable(bills) {
+      const tbody = document.getElementById('billsTableBody');
+      if (!bills || bills.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--muted);">No bills issued in this month.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = bills.map(b => {
+        const dateStr = b.billDate ? new Date(b.billDate).toLocaleDateString() + ' ' + new Date(b.billDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—';
+        return `
+          <tr>
+            <td><strong><code>${escapeHtml(b.billNumber)}</code></strong></td>
+            <td style="font-size: 0.85rem;">${dateStr}</td>
+            <td>${escapeHtml(b.customerName || 'Walk-in')}</td>
+            <td><span class="badge-pill" style="background:#f1f5f9; color:#475569;">${escapeHtml(b.paymentMode || 'CASH')}</span></td>
+            <td>${formatCurrency(b.subtotal)}</td>
+            <td style="color: var(--muted);">${formatCurrency(b.discount || 0)}</td>
+            <td style="color: #0284c7; font-weight: 700;">${formatCurrency(b.taxAmount || 0)}</td>
+            <td style="font-weight: 700; color: var(--primary);">${formatCurrency(b.grandTotal)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterBillsTable() {
+      const q = document.getElementById('billSearchInput').value.toLowerCase().trim();
+      if (!q) {
+        renderBillsTable(currentBills);
+        return;
+      }
+      const filtered = currentBills.filter(b => 
+        (b.billNumber && b.billNumber.toLowerCase().includes(q)) ||
+        (b.customerName && b.customerName.toLowerCase().includes(q)) ||
+        (b.customerPhone && b.customerPhone.includes(q))
+      );
+      renderBillsTable(filtered);
+    }
+
+    // --- EXPENSE MODAL & REASON VALIDATION ---
+    function openExpenseModal() {
+      document.getElementById('expenseAmountInput').value = '';
+      document.getElementById('expenseDescriptionInput').value = '';
+      document.getElementById('expenseModalError').style.display = 'none';
+      document.getElementById('expenseCategorySelect').value = 'Rent';
+      handleCategoryChange();
+      document.getElementById('expenseModal').classList.add('active');
+    }
+
+    function closeExpenseModal() {
+      document.getElementById('expenseModal').classList.remove('active');
+    }
+
+    function handleCategoryChange() {
+      const cat = document.getElementById('expenseCategorySelect').value;
+      const descLabel = document.getElementById('descriptionLabel');
+      const descInput = document.getElementById('expenseDescriptionInput');
+      const warning = document.getElementById('otherReasonWarning');
+
+      if (cat === 'Other') {
+        descLabel.innerHTML = 'Reason / Description <span style="color: var(--danger);">* (Mandatory Reason)</span>';
+        descInput.placeholder = 'State why this money was spent (e.g. Broken shelf repair, pest control, office supplies)';
+        descInput.required = true;
+        warning.style.display = 'block';
+      } else {
+        descLabel.innerHTML = 'Description / Notes <span class="hint">(Optional)</span>';
+        descInput.placeholder = 'e.g. Shop monthly rent or electricity invoice';
+        descInput.required = false;
+        warning.style.display = 'none';
+      }
+    }
+
+    async function saveExpense(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('expenseModalError');
+      errEl.style.display = 'none';
+
+      const dateStr = document.getElementById('expenseDateInput').value;
+      const category = document.getElementById('expenseCategorySelect').value;
+      const amount = parseFloat(document.getElementById('expenseAmountInput').value);
+      const description = document.getElementById('expenseDescriptionInput').value.trim();
+      const paymentMode = document.getElementById('expensePaymentMode').value;
+
+      if (!amount || amount <= 0) {
+        errEl.textContent = 'Please enter a valid expense amount greater than zero.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Explicit check for user choosing "Other" -> reason is required!
+      if (category === 'Other' && !description) {
+        errEl.textContent = '❌ You must provide a reason explaining the money spent when category is "Other".';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const payload = {
+        expenseDate: dateStr,
+        category: category,
+        amount: amount,
+        description: description,
+        paymentMode: paymentMode,
+        recordedBy: user ? user.userId : null
+      };
+
+      try {
+        await apiPost('/finance/expenses', payload);
+        closeExpenseModal();
+        loadMonthlyReport();
+      } catch (err) {
+        errEl.textContent = '❌ ' + err.message;
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function deleteExpenseRecord(id) {
+      if (!confirm('Are you sure you want to remove this expense record?')) return;
+      try {
+        await apiDelete('/finance/expenses/' + id);
+        loadMonthlyReport();
+      } catch (err) {
+        alert('Failed to delete expense: ' + err.message);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initFilters();
+      loadMonthlyReport();
+    });
+  </script>
+</body>
+</html>

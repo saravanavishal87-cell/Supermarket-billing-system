@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products - Rahul Stores POS</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="products-layout">
+    <div class="card">
+      <h3 style="margin-bottom:16px;">Add / Edit Product</h3>
+      <form id="productForm">
+        <input type="hidden" id="productId" value="">
+        <div class="form-group">
+          <label>Barcode</label>
+          <input type="text" id="barcode" required>
+        </div>
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="productName" required>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="categoryId">
+            <option value="1">Groceries</option>
+            <option value="2">Beverages</option>
+            <option value="3">Snacks</option>
+            <option value="4">Dairy</option>
+            <option value="5">Personal Care</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Price (Rs.)</label>
+          <input type="number" id="price" step="0.01" min="0" required>
+        </div>
+        <div class="form-group">
+          <label>Stock Qty</label>
+          <input type="number" id="stockQty" min="0" required>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <input type="text" id="unit" value="pcs">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+          <button type="button" class="btn btn-danger" onclick="deleteProduct()">Delete</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="overflow:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Barcode</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Unit</th>
+          </tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    const user = requireAuth();
+    if (user.role !== 'ADMIN') {
+      alert('Only Admin can manage products.');
+      window.location.href = '/dashboard.html';
+    }
+    document.getElementById('header').innerHTML = renderHeader('Product Management', 'Add, edit and manage Rahul Stores inventory');
+
+    let products = [];
+
+    async function loadProducts() {
+      try {
+        products = await apiGet('/products');
+        const tbody = document.getElementById('productTable');
+        tbody.innerHTML = products.map(p => `
+          <tr onclick="selectProduct(${p.productId})">
+            <td>${p.productId}</td>
+            <td>${p.barcode}</td>
+            <td>${p.productName}</td>
+            <td>${p.categoryName || ''}</td>
+            <td>${formatCurrency(p.price)}</td>
+            <td>${p.stockQty}</td>
+            <td>${p.unit}</td>
+          </tr>
+        `).join('');
+      } catch (err) { alert(err.message); }
+    }
+
+    function selectProduct(id) {
+      const p = products.find(x => x.productId === id);
+      if (!p) return;
+      document.getElementById('productId').value = p.productId;
+      document.getElementById('barcode').value = p.barcode;
+      document.getElementById('productName').value = p.productName;
+      document.getElementById('categoryId').value = p.categoryId;
+      document.getElementById('price').value = p.price;
+      document.getElementById('stockQty').value = p.stockQty;
+      document.getElementById('unit').value = p.unit;
+    }
+
+    function clearForm() {
+      document.getElementById('productId').value = '';
+      document.getElementById('productForm').reset();
+      document.getElementById('unit').value = 'pcs';
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const product = {
+        barcode: document.getElementById('barcode').value.trim(),
+        productName: document.getElementById('productName').value.trim(),
+        categoryId: parseInt(document.getElementById('categoryId').value),
+        price: parseFloat(document.getElementById('price').value),
+        stockQty: parseInt(document.getElementById('stockQty').value),
+        unit: document.getElementById('unit').value.trim()
+      };
+
+      try {
+        const id = document.getElementById('productId').value;
+        if (id) {
+          await apiPut('/products/' + id, product);
+          alert('Product updated!');
+        } else {
+          await apiPost('/products', product);
+          alert('Product added!');
+        }
+        clearForm();
+        loadProducts();
+      } catch (err) { alert(err.message); }
+    });
+
+    async function deleteProduct() {
+      const id = document.getElementById('productId').value;
+      if (!id) { alert('Select a product to delete.'); return; }
+      if (!confirm('Delete this product?')) return;
+      try {
+        await apiDelete('/products/' + id);
+        clearForm();
+        loadProducts();
+      } catch (err) { alert(err.message); }
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>

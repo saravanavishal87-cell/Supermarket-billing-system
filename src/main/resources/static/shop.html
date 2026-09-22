@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop Profile & Settings - Supermarket POS</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/api.js"></script>
+</head>
+<body>
+  <header class="header">
+    <a href="/dashboard.html" class="header-brand">
+      <img id="navShopLogo" src="/images/shop_banner.jpg" alt="Logo" onerror="this.src='/images/shop_banner.jpg';">
+      <div>
+        <h1 id="navShopTitle">Rahul Stores</h1>
+        <div class="subtitle">Shop Profile & Auto-Delete Settings</div>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/billing.html">POS Billing</a>
+      <a href="/monthly-income.html">Monthly Income & Tax</a>
+      <a href="/products.html">Products</a>
+      <a href="/customers.html">Customers</a>
+      <a href="/credentials.html">Credentials</a>
+      <a href="/shop.html" class="active">Shop Profile</a>
+      <button class="btn btn-outline-white" onclick="logout()" style="margin-left: 10px;">Logout</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="page-title-bar">
+      <h2>🏪 Shop Branding & Auto-Delete Settings</h2>
+      <button class="btn btn-primary" onclick="saveShopDetails()">Save Changes</button>
+    </div>
+
+    <div class="shop-grid">
+      <!-- Left Column: Shop Picture Upload & Showcase -->
+      <div class="card shop-preview-card">
+        <h3>Shop Picture & Logo</h3>
+        <p class="hint" style="margin-bottom: 16px;">This picture is displayed on your home page and customer receipts.</p>
+        
+        <img id="shopBannerPreview" src="/images/shop_banner.jpg" alt="Shop Banner Preview" class="shop-banner-preview">
+
+        <form id="imageUploadForm" enctype="multipart/form-data">
+          <label class="upload-drop-zone" for="imageFileInput">
+            <span style="font-size: 1.8rem; display: block; margin-bottom: 4px;">📸</span>
+            <strong>Upload New Shop Picture</strong>
+            <div class="hint">Click to choose image file (JPG, PNG, WEBP)</div>
+            <input type="file" id="imageFileInput" accept="image/*" style="display: none;" onchange="uploadShopImage(this)">
+          </label>
+        </form>
+        <div id="imageUploadStatus" class="hint" style="margin-top: 8px;"></div>
+      </div>
+
+      <!-- Right Column: Shop Details & Auto-Delete Settings -->
+      <div>
+        <!-- Store Information -->
+        <div class="card" style="margin-bottom: 24px;">
+          <h3>Store Information</h3>
+          <p class="hint" style="margin-bottom: 16px;">General details shown on invoices and headers.</p>
+
+          <div class="form-group">
+            <label for="shopNameInput">Shop / Store Name *</label>
+            <input type="text" id="shopNameInput" placeholder="e.g. Rahul Stores Supermarket" required>
+          </div>
+
+          <div class="form-group">
+            <label for="addressInput">Store Address</label>
+            <input type="text" id="addressInput" placeholder="e.g. 123 Main Bazaar Road, Market City">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+              <label for="phoneInput">Phone Number</label>
+              <input type="text" id="phoneInput" placeholder="e.g. +91 98765 43210">
+            </div>
+            <div class="form-group">
+              <label for="emailInput">Email Address</label>
+              <input type="email" id="emailInput" placeholder="e.g. contact@rahulstores.com">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="gstinInput">GSTIN / Tax ID</label>
+            <input type="text" id="gstinInput" placeholder="e.g. 33AAAAA0000A1Z5">
+          </div>
+        </div>
+
+        <!-- Auto Delete Purchase History -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3>🗑️ Auto Delete Purchase History</h3>
+            <span class="btn btn-danger" style="font-size: 0.8rem; padding: 6px 12px;" onclick="purgeNow()">Purge Expired Bills Now</span>
+          </div>
+          <p class="hint" style="margin-bottom: 16px;">
+            Automatically remove old bill records and purchase items from the database after a specified duration to keep your system fast and clean.
+          </p>
+
+          <div class="form-group">
+            <label>Select Auto-Deletion Period:</label>
+            <div class="duration-options">
+              <div class="duration-chip" data-value="1" onclick="selectDuration(1)">1 Month</div>
+              <div class="duration-chip" data-value="3" onclick="selectDuration(3)">3 Months</div>
+              <div class="duration-chip" data-value="6" onclick="selectDuration(6)">6 Months</div>
+              <div class="duration-chip" data-value="12" onclick="selectDuration(12)">12 Months</div>
+              <div class="duration-chip" data-value="0" onclick="selectDuration(0)">Disabled</div>
+            </div>
+          </div>
+          <div id="purgeStatus" style="font-size: 0.85rem; margin-top: 10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Management Section: Admin Profile & Cashier Management -->
+    <div style="margin-top: 36px;" id="userManagementSection">
+      <div class="page-title-bar" style="margin-bottom: 16px;">
+        <h2>🔐 User Accounts & Access Control</h2>
+        <a href="/credentials.html" class="btn btn-primary" style="font-size: 0.85rem; padding: 6px 14px;">Open Dedicated Credentials Page ↗</a>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; padding: 12px 18px; border-radius: 6px; margin-bottom: 20px;">
+        <div><strong>💡 Credentials Management:</strong> You can edit master admin passwords and all cashier staff accounts directly on the dedicated credentials page.</div>
+        <a href="/credentials.html" class="btn btn-secondary" style="font-size: 0.8rem; padding: 5px 12px;">Go to Credentials</a>
+      </div>
+
+      <div class="shop-grid">
+        <!-- Admin Profile & Password Edit Card -->
+        <div class="card" id="adminProfileCard">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3>👤 Admin Account & Password</h3>
+            <span style="font-size: 0.75rem; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: bold;">ADMIN</span>
+          </div>
+          <p class="hint" style="margin-bottom: 16px;">Edit admin display name, username, and update your login password.</p>
+
+          <form id="adminProfileForm" onsubmit="saveAdminProfile(event)">
+            <input type="hidden" id="adminUserId">
+            <div class="form-group">
+              <label for="adminFullNameInput">Admin Full Name *</label>
+              <input type="text" id="adminFullNameInput" placeholder="Store Admin" required>
+            </div>
+
+            <div class="form-group">
+              <label for="adminUsernameInput">Admin Username *</label>
+              <input type="text" id="adminUsernameInput" placeholder="admin" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+              <label for="adminNewPasswordInput">New Password</label>
+              <input type="password" id="adminNewPasswordInput" placeholder="Leave blank to keep existing password" autocomplete="new-password">
+            </div>
+
+            <div class="form-group">
+              <label for="adminConfirmPasswordInput">Confirm New Password</label>
+              <input type="password" id="adminConfirmPasswordInput" placeholder="Re-type new password" autocomplete="new-password">
+            </div>
+
+            <div id="adminProfileStatus" class="hint" style="margin-bottom: 12px; text-align: left;"></div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Admin Credentials</button>
+          </form>
+        </div>
+
+        <!-- Cashier / Staff Accounts Card -->
+        <div class="card" id="cashierManagementCard">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3>👥 Cashier / Staff Details</h3>
+            <button class="btn btn-accent" style="padding: 6px 14px; font-size: 0.85rem;" onclick="openAddCashierModal()">+ Add Cashier</button>
+          </div>
+          <p class="hint" style="margin-bottom: 16px;">Add cashiers, set their login passwords, or edit existing staff credentials.</p>
+
+          <table class="data-table" style="margin-top: 8px;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="cashierTableBody">
+              <tr><td colspan="4" style="text-align:center; color:var(--muted); padding:16px;">Loading cashiers...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentAutoDeleteMonths = 3;
+
+    async function loadShopInfo() {
+      try {
+        const res = await fetch('/api/shop');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('shopNameInput').value = data.shopName || '';
+          document.getElementById('addressInput').value = data.address || '';
+          document.getElementById('phoneInput').value = data.phone || '';
+          document.getElementById('emailInput').value = data.email || '';
+          document.getElementById('gstinInput').value = data.gstin || '';
+
+          if (data.shopName) {
+            document.getElementById('navShopTitle').textContent = data.shopName;
+          }
+          if (data.imagePath) {
+            const imgUrl = data.imagePath + '?t=' + Date.now();
+            document.getElementById('shopBannerPreview').src = imgUrl;
+            document.getElementById('navShopLogo').src = imgUrl;
+          }
+
+          selectDuration(data.autoDeleteMonths !== undefined ? data.autoDeleteMonths : 3);
+        }
+      } catch (e) {
+        console.error('Failed to load shop details', e);
+      }
+    }
+
+    function selectDuration(months) {
+      currentAutoDeleteMonths = months;
+      document.querySelectorAll('.duration-chip').forEach(chip => {
+        if (parseInt(chip.getAttribute('data-value')) === months) {
+          chip.classList.add('selected');
+        } else {
+          chip.classList.remove('selected');
+        }
+      });
+    }
+
+    async function saveShopDetails() {
+      const payload = {
+        shopName: document.getElementById('shopNameInput').value.trim(),
+        address: document.getElementById('addressInput').value.trim(),
+        phone: document.getElementById('phoneInput').value.trim(),
+        email: document.getElementById('emailInput').value.trim(),
+        gstin: document.getElementById('gstinInput').value.trim(),
+        imagePath: document.getElementById('shopBannerPreview').getAttribute('src').split('?')[0],
+        autoDeleteMonths: currentAutoDeleteMonths
+      };
+
+      try {
+        const res = await fetch('/api/shop', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          alert('Shop details and auto-delete settings saved successfully!');
+          loadShopInfo();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to save settings'));
+        }
+      } catch (e) {
+        alert('Network error saving shop settings');
+      }
+    }
+
+    async function uploadShopImage(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const statusDiv = document.getElementById('imageUploadStatus');
+      statusDiv.textContent = 'Uploading picture...';
+      statusDiv.style.color = 'var(--primary)';
+
+      try {
+        const res = await fetch('/api/shop/image', {
+          method: 'POST',
+          body: formData
+        });
+        if (res.ok) {
+          const data = await res.json();
+          statusDiv.textContent = 'Picture uploaded successfully!';
+          statusDiv.style.color = 'var(--success)';
+          const newUrl = data.imagePath + '?t=' + Date.now();
+          document.getElementById('shopBannerPreview').src = newUrl;
+          document.getElementById('navShopLogo').src = newUrl;
+        } else {
+          const err = await res.json();
+          statusDiv.textContent = 'Upload failed: ' + (err.error || 'Unknown error');
+          statusDiv.style.color = 'var(--danger)';
+        }
+      } catch (e) {
+        statusDiv.textContent = 'Error uploading image.';
+        statusDiv.style.color = 'var(--danger)';
+      }
+    }
+
+    async function purgeNow() {
+      if (!confirm(`Are you sure you want to purge all purchase history older than ${currentAutoDeleteMonths} month(s)? This action cannot be undone.`)) {
+        return;
+      }
+      const purgeStatus = document.getElementById('purgeStatus');
+      purgeStatus.textContent = 'Purging purchase records...';
+      purgeStatus.style.color = 'var(--primary)';
+
+      try {
+        const res = await fetch(`/api/shop/purge-purchases?months=${currentAutoDeleteMonths}`, {
+          method: 'POST'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          purgeStatus.textContent = `Purge complete! Deleted ${data.deletedBills} bill record(s) older than ${data.retentionMonths} month(s).`;
+          purgeStatus.style.color = 'var(--success)';
+        } else {
+          const err = await res.json();
+          purgeStatus.textContent = 'Purge failed: ' + (err.error || 'Server error');
+          purgeStatus.style.color = 'var(--danger)';
+        }
+      } catch (e) {
+        purgeStatus.textContent = 'Network error purging purchase records';
+        purgeStatus.style.color = 'var(--danger)';
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('user');
+      window.location.href = '/login.html';
+    }
+
+    // --- ADMIN PROFILE & PASSWORD EDITING ---
+    async function loadAdminProfile() {
+      const user = getUser();
+      if (!user) return;
+      if (user.role !== 'ADMIN') {
+        const userSec = document.getElementById('userManagementSection');
+        if (userSec) userSec.style.display = 'none';
+        return;
+      }
+
+      try {
+        const profile = await apiGet('/users/profile/' + user.userId);
+        document.getElementById('adminUserId').value = profile.userId;
+        document.getElementById('adminFullNameInput').value = profile.fullName || '';
+        document.getElementById('adminUsernameInput').value = profile.username || '';
+      } catch (e) {
+        console.warn('Could not load admin profile details', e);
+      }
+    }
+
+    async function saveAdminProfile(e) {
+      e.preventDefault();
+      const statusDiv = document.getElementById('adminProfileStatus');
+      statusDiv.textContent = '';
+      statusDiv.style.color = 'inherit';
+
+      const userId = document.getElementById('adminUserId').value;
+      const fullName = document.getElementById('adminFullNameInput').value.trim();
+      const username = document.getElementById('adminUsernameInput').value.trim();
+      const newPass = document.getElementById('adminNewPasswordInput').value;
+      const confirmPass = document.getElementById('adminConfirmPasswordInput').value;
+
+      if (newPass || confirmPass) {
+        if (newPass !== confirmPass) {
+          statusDiv.textContent = '❌ Passwords do not match!';
+          statusDiv.style.color = 'var(--danger)';
+          return;
+        }
+        if (newPass.length < 4) {
+          statusDiv.textContent = '❌ Password should be at least 4 characters long.';
+          statusDiv.style.color = 'var(--danger)';
+          return;
+        }
+      }
+
+      try {
+        statusDiv.textContent = 'Saving admin credentials...';
+        statusDiv.style.color = 'var(--primary)';
+
+        const payload = { fullName, username };
+        if (newPass) payload.password = newPass;
+
+        const updated = await apiPut('/users/profile/' + userId, payload);
+
+        statusDiv.textContent = '✅ ' + (updated.message || 'Admin profile saved successfully!');
+        statusDiv.style.color = 'var(--success)';
+        document.getElementById('adminNewPasswordInput').value = '';
+        document.getElementById('adminConfirmPasswordInput').value = '';
+
+        // Update local session
+        const currentSession = getUser();
+        if (currentSession) {
+          currentSession.fullName = updated.fullName;
+          currentSession.username = updated.username;
+          sessionStorage.setItem('user', JSON.stringify(currentSession));
+        }
+      } catch (err) {
+        statusDiv.textContent = '❌ ' + err.message;
+        statusDiv.style.color = 'var(--danger)';
+      }
+    }
+
+    // --- CASHIER STAFF MANAGEMENT ---
+    async function loadCashiers() {
+      const user = getUser();
+      if (!user || user.role !== 'ADMIN') return;
+
+      const tbody = document.getElementById('cashierTableBody');
+      try {
+        const cashiers = await apiGet('/users/cashiers');
+        if (cashiers.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--muted); padding:16px;">No cashier staff found. Click "+ Add Cashier" to create one.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = cashiers.map(c => `
+          <tr>
+            <td><strong>#${c.userId}</strong></td>
+            <td><strong>${escapeHtml(c.fullName)}</strong></td>
+            <td><code>${escapeHtml(c.username)}</code></td>
+            <td style="text-align: right;">
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editCashier(${c.userId}, '${escapeHtml(c.fullName)}', '${escapeHtml(c.username)}')">✏️ Edit / Password</button>
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteCashier(${c.userId}, '${escapeHtml(c.fullName)}')">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:16px;">Error loading cashiers</td></tr>';
+      }
+    }
+
+    function openAddCashierModal() {
+      document.getElementById('cashierModalTitle').textContent = 'Add New Cashier';
+      document.getElementById('cashierIdInput').value = '';
+      document.getElementById('cashierFullNameInput').value = '';
+      document.getElementById('cashierUsernameInput').value = '';
+      document.getElementById('cashierPasswordInput').value = '';
+      document.getElementById('cashierPasswordInput').required = true;
+      document.getElementById('cashierPasswordHint').style.display = 'none';
+      document.getElementById('cashierModalError').style.display = 'none';
+      document.getElementById('cashierModal').classList.add('active');
+    }
+
+    function editCashier(id, name, username) {
+      document.getElementById('cashierModalTitle').textContent = `Edit Cashier: ${name}`;
+      document.getElementById('cashierIdInput').value = id;
+      document.getElementById('cashierFullNameInput').value = name;
+      document.getElementById('cashierUsernameInput').value = username;
+      document.getElementById('cashierPasswordInput').value = '';
+      document.getElementById('cashierPasswordInput').required = false;
+      document.getElementById('cashierPasswordHint').style.display = 'block';
+      document.getElementById('cashierModalError').style.display = 'none';
+      document.getElementById('cashierModal').classList.add('active');
+    }
+
+    function closeCashierModal() {
+      document.getElementById('cashierModal').classList.remove('active');
+    }
+
+    async function saveCashier(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('cashierModalError');
+      errEl.style.display = 'none';
+
+      const id = document.getElementById('cashierIdInput').value;
+      const fullName = document.getElementById('cashierFullNameInput').value.trim();
+      const username = document.getElementById('cashierUsernameInput').value.trim();
+      const password = document.getElementById('cashierPasswordInput').value;
+
+      if (!id && !password) {
+        errEl.textContent = 'Password is required when creating a new cashier.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const payload = { fullName, username };
+      if (password) payload.password = password;
+
+      try {
+        if (id) {
+          await apiPut('/users/cashiers/' + id, payload);
+        } else {
+          await apiPost('/users/cashiers', payload);
+        }
+        closeCashierModal();
+        loadCashiers();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function deleteCashier(id, name) {
+      if (!confirm(`Are you sure you want to remove cashier "${name}"?`)) return;
+      try {
+        const res = await fetch('/api/users/cashiers/' + id, { method: 'DELETE' });
+        if (res.ok) {
+          loadCashiers();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to delete cashier'));
+        }
+      } catch (e) {
+        alert('Network error deleting cashier');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.location.hash === '#userManagementSection') {
+        window.location.href = '/credentials.html';
+        return;
+      }
+      loadShopInfo();
+      loadAdminProfile();
+      loadCashiers();
+    });
+  </script>
+
+  <!-- Add / Edit Cashier Modal -->
+  <div class="modal-overlay" id="cashierModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="cashierModalTitle">Add New Cashier</h3>
+        <button class="modal-close" onclick="closeCashierModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="cashierForm" onsubmit="saveCashier(event)">
+          <input type="hidden" id="cashierIdInput">
+
+          <div class="form-group">
+            <label for="cashierFullNameInput">Cashier Full Name *</label>
+            <input type="text" id="cashierFullNameInput" placeholder="e.g. John Cashier" required>
+          </div>
+
+          <div class="form-group">
+            <label for="cashierUsernameInput">Login Username *</label>
+            <input type="text" id="cashierUsernameInput" placeholder="e.g. cashier2" required autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label for="cashierPasswordInput" id="cashierPasswordLabel">Login Password</label>
+            <input type="password" id="cashierPasswordInput" placeholder="Enter login password" autocomplete="new-password">
+            <div class="hint" id="cashierPasswordHint" style="display:none; text-align:left; margin-top:4px;">Leave blank if you do not want to change current password.</div>
+          </div>
+
+          <div id="cashierModalError" class="error-msg" style="display:none; margin-bottom:12px;"></div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:16px;">
+            <button type="button" class="btn btn-secondary" onclick="closeCashierModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveCashierBtn">Save Cashier</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
