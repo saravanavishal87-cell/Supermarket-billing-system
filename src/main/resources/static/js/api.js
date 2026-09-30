@@ -75,7 +75,7 @@ function renderHeader(title, subtitle) {
       <nav class="header-nav">
         <a href="/dashboard.html" class="${currentPath.includes('dashboard') ? 'active' : ''}">Dashboard</a>
         <a href="/billing.html" class="${currentPath.includes('billing') ? 'active' : ''}">POS Billing</a>
-        <a href="/monthly-income.html" class="${currentPath.includes('monthly-income') ? 'active' : ''}">Monthly Income & Tax</a>
+        <a href="/monthly-income.html" class="${currentPath.includes('monthly-income') ? 'active' : ''}">Monthly Statement</a>
         <a href="/products.html" class="${currentPath.includes('products') ? 'active' : ''}">Products</a>
         <a href="/customers.html" class="${currentPath.includes('customers') ? 'active' : ''}">Customers</a>
         <a href="/credentials.html" class="${currentPath.includes('credentials') ? 'active' : ''}">Credentials</a>

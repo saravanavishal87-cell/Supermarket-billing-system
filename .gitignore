@@ -4,3 +4,7 @@ target/
 *.log
 .idea/
 *.iml
+*.mv.db
+*.trace.db
+*.lock.db
+database/*.db

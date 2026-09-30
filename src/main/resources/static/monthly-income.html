@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monthly Income, Tax & Profit/Loss Calculator - Rahul Stores POS</title>
+  <title>Monthly Statement & Profit/Loss - Rahul Stores POS</title>
   <link rel="stylesheet" href="/css/style.css">
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=2"></script>
 </head>
 <body>
   <div id="header"></div>
@@ -14,8 +14,8 @@
     <!-- Title & Action Bar -->
     <div class="page-title-bar">
       <div>
-        <h2>📊 Monthly Income, Tax & Profit/Loss Calculator</h2>
-        <p class="hint">Calculate total monthly revenue, monitor tax collected, track money spent (rent, electric, purchases, other), and view net profit/loss.</p>
+        <h2>📊 Monthly Statement</h2>
+        <p class="hint">Calculate total monthly sales statement, monitor tax collected, track money spent (rent, electric, purchases, other), and view net profit/loss.</p>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
         <button class="btn btn-primary" id="recordExpenseBtn" onclick="openExpenseModal()">+ Record Expense / Money Spent</button>
@@ -63,7 +63,7 @@
         <!-- 1. Total Income -->
         <div class="stat-card green">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div class="label">💰 Total Monthly Income (Sales)</div>
+            <div class="label">💰 Total Monthly Sales</div>
             <span class="badge-pill badge-salary" style="font-size: 0.7rem;">REVENUE</span>
           </div>
           <div class="value" id="totalIncomeVal">Rs. 0.00</div>
@@ -310,7 +310,7 @@
 
   <script>
     const user = requireAuth();
-    document.getElementById('header').innerHTML = renderHeader('Monthly Income & Tax', 'Track revenue, tax, expenses & profit/loss');
+    document.getElementById('header').innerHTML = renderHeader('Monthly Statement', 'Track revenue, tax, expenses & profit/loss');
 
     let currentBills = [];
     let currentReport = null;

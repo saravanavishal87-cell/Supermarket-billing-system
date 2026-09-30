@@ -18,7 +18,7 @@
     <nav class="header-nav">
       <a href="/dashboard.html">Dashboard</a>
       <a href="/billing.html">POS Billing</a>
-      <a href="/monthly-income.html">Monthly Income & Tax</a>
+      <a href="/monthly-income.html">Monthly Statement</a>
       <a href="/products.html">Products</a>
       <a href="/customers.html" class="active">Customers</a>
       <a href="/credentials.html">Credentials</a>
@@ -110,8 +110,13 @@
       </div>
       <div class="modal-body">
         <form id="customerForm" onsubmit="saveCustomer(event)">
-          <input type="hidden" id="customerIdInput">
+          <input type="hidden" id="originalCustomerIdInput">
           
+          <div class="form-group">
+            <label for="customerIdInput">Customer ID <span style="font-size:0.8rem; font-weight:normal; color:var(--muted);">(Auto-generated if empty, or edit ID)</span></label>
+            <input type="number" id="customerIdInput" min="1" placeholder="Auto-generated or custom ID">
+          </div>
+
           <div class="form-group">
             <label for="nameInput">Full Name *</label>
             <input type="text" id="nameInput" placeholder="e.g. Ramesh Kumar" required>
@@ -189,12 +194,14 @@
 
     function openAddModal() {
       document.getElementById('modalTitle').textContent = 'Add New Customer';
+      document.getElementById('originalCustomerIdInput').value = '';
       document.getElementById('customerIdInput').value = '';
       document.getElementById('nameInput').value = '';
       document.getElementById('phoneInput').value = '';
       document.getElementById('emailInput').value = '';
       document.getElementById('addressInput').value = '';
       document.getElementById('modalError').textContent = '';
+      document.getElementById('saveBtn').textContent = 'Save Customer';
       document.getElementById('customerModal').classList.add('active');
     }
 
@@ -203,13 +210,15 @@
         const res = await fetch(`/api/customers/${id}`);
         if (res.ok) {
           const c = await res.json();
-          document.getElementById('modalTitle').textContent = 'Edit Customer Details';
+          document.getElementById('modalTitle').textContent = `Edit Customer (Current ID #${c.customerId})`;
+          document.getElementById('originalCustomerIdInput').value = c.customerId;
           document.getElementById('customerIdInput').value = c.customerId;
           document.getElementById('nameInput').value = c.name;
           document.getElementById('phoneInput').value = c.phone;
           document.getElementById('emailInput').value = c.email || '';
           document.getElementById('addressInput').value = c.address || '';
           document.getElementById('modalError').textContent = '';
+          document.getElementById('saveBtn').textContent = 'Update Customer';
           document.getElementById('customerModal').classList.add('active');
         }
       } catch (e) {
@@ -223,8 +232,10 @@
 
     async function saveCustomer(e) {
       e.preventDefault();
-      const id = document.getElementById('customerIdInput').value;
+      const origId = document.getElementById('originalCustomerIdInput').value;
+      const rawId = document.getElementById('customerIdInput').value.trim();
       const payload = {
+        customerId: rawId ? parseInt(rawId) : 0,
         name: document.getElementById('nameInput').value.trim(),
         phone: document.getElementById('phoneInput').value.trim(),
         email: document.getElementById('emailInput').value.trim(),
@@ -234,8 +245,8 @@
       const errorDiv = document.getElementById('modalError');
       errorDiv.textContent = '';
 
-      const method = id ? 'PUT' : 'POST';
-      const url = id ? `/api/customers/${id}` : '/api/customers';
+      const method = origId ? 'PUT' : 'POST';
+      const url = origId ? `/api/customers/${origId}` : '/api/customers';
 
       try {
         const res = await fetch(url, {

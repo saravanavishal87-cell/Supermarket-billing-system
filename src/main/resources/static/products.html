@@ -11,9 +11,13 @@
 
   <div class="products-layout">
     <div class="card">
-      <h3 style="margin-bottom:16px;">Add / Edit Product</h3>
+      <h3 style="margin-bottom:16px;" id="formTitle">Add / Edit Product</h3>
       <form id="productForm">
-        <input type="hidden" id="productId" value="">
+        <input type="hidden" id="editOriginalId" value="">
+        <div class="form-group">
+          <label for="productId">Product ID <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);">(Auto-generated if empty, or edit ID)</span></label>
+          <input type="number" id="productId" min="1" placeholder="Auto-generated or custom ID">
+        </div>
         <div class="form-group">
           <label>Barcode</label>
           <input type="text" id="barcode" required>
@@ -45,7 +49,7 @@
           <input type="text" id="unit" value="pcs">
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;">
-          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="submit" class="btn btn-primary" id="saveProductBtn">Save Product</button>
           <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
           <button type="button" class="btn btn-danger" onclick="deleteProduct()">Delete</button>
         </div>
@@ -63,6 +67,7 @@
             <th>Price</th>
             <th>Stock</th>
             <th>Unit</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody id="productTable"></tbody>
@@ -70,7 +75,7 @@
     </div>
   </div>
 
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=2"></script>
   <script>
     const user = requireAuth();
     if (user.role !== 'ADMIN') {
@@ -86,14 +91,17 @@
         products = await apiGet('/products');
         const tbody = document.getElementById('productTable');
         tbody.innerHTML = products.map(p => `
-          <tr onclick="selectProduct(${p.productId})">
-            <td>${p.productId}</td>
-            <td>${p.barcode}</td>
-            <td>${p.productName}</td>
+          <tr onclick="selectProduct(${p.productId})" id="prod-row-${p.productId}" style="cursor:pointer;">
+            <td><strong>#${p.productId}</strong></td>
+            <td>${p.barcode || ''}</td>
+            <td><strong>${p.productName}</strong></td>
             <td>${p.categoryName || ''}</td>
             <td>${formatCurrency(p.price)}</td>
             <td>${p.stockQty}</td>
             <td>${p.unit}</td>
+            <td onclick="event.stopPropagation();">
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="selectProduct(${p.productId})">✏️ Edit</button>
+            </td>
           </tr>
         `).join('');
       } catch (err) { alert(err.message); }
@@ -102,6 +110,7 @@
     function selectProduct(id) {
       const p = products.find(x => x.productId === id);
       if (!p) return;
+      document.getElementById('editOriginalId').value = p.productId;
       document.getElementById('productId').value = p.productId;
       document.getElementById('barcode').value = p.barcode;
       document.getElementById('productName').value = p.productName;
@@ -109,17 +118,29 @@
       document.getElementById('price').value = p.price;
       document.getElementById('stockQty').value = p.stockQty;
       document.getElementById('unit').value = p.unit;
+      document.getElementById('formTitle').textContent = `Edit Product (Editing ID #${p.productId})`;
+      document.getElementById('saveProductBtn').textContent = 'Update Product';
+
+      document.querySelectorAll('#productTable tr').forEach(r => r.style.background = '');
+      const activeRow = document.getElementById(`prod-row-${p.productId}`);
+      if (activeRow) activeRow.style.background = 'rgba(79, 70, 229, 0.08)';
     }
 
     function clearForm() {
-      document.getElementById('productId').value = '';
+      document.getElementById('editOriginalId').value = '';
       document.getElementById('productForm').reset();
+      document.getElementById('productId').value = '';
       document.getElementById('unit').value = 'pcs';
+      document.getElementById('formTitle').textContent = 'Add / Edit Product';
+      document.getElementById('saveProductBtn').textContent = 'Save Product';
+      document.querySelectorAll('#productTable tr').forEach(r => r.style.background = '');
     }
 
     document.getElementById('productForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const rawId = document.getElementById('productId').value.trim();
       const product = {
+        productId: rawId ? parseInt(rawId) : 0,
         barcode: document.getElementById('barcode').value.trim(),
         productName: document.getElementById('productName').value.trim(),
         categoryId: parseInt(document.getElementById('categoryId').value),
@@ -129,13 +150,13 @@
       };
 
       try {
-        const id = document.getElementById('productId').value;
-        if (id) {
-          await apiPut('/products/' + id, product);
-          alert('Product updated!');
+        const origId = document.getElementById('editOriginalId').value;
+        if (origId) {
+          const res = await apiPut('/products/' + origId, product);
+          alert(res && res.message ? res.message : 'Product updated!');
         } else {
-          await apiPost('/products', product);
-          alert('Product added!');
+          const res = await apiPost('/products', product);
+          alert(res && res.message ? res.message : 'Product added!');
         }
         clearForm();
         loadProducts();
@@ -143,11 +164,11 @@
     });
 
     async function deleteProduct() {
-      const id = document.getElementById('productId').value;
-      if (!id) { alert('Select a product to delete.'); return; }
-      if (!confirm('Delete this product?')) return;
+      const origId = document.getElementById('editOriginalId').value;
+      if (!origId) { alert('Select a product to delete.'); return; }
+      if (!confirm(`Delete product #${origId}? This cannot be undone.`)) return;
       try {
-        await apiDelete('/products/' + id);
+        await apiDelete('/products/' + origId);
         clearForm();
         loadProducts();
       } catch (err) { alert(err.message); }

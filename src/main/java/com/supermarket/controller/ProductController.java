@@ -68,8 +68,14 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<?> add(@RequestBody Product product) {
         try {
+            if (product.getProductId() > 0) {
+                Product existing = productDAO.findById(product.getProductId());
+                if (existing != null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Product ID " + product.getProductId() + " already exists"));
+                }
+            }
             productDAO.addProduct(product);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "Product added"));
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "Product added successfully", "productId", product.getProductId()));
         } catch (SQLException e) {
             return error(e);
         }
@@ -78,9 +84,19 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable int id, @RequestBody Product product) {
         try {
-            product.setProductId(id);
-            productDAO.updateProduct(product);
-            return ResponseEntity.ok(Map.of("message", "Product updated"));
+            Product existing = productDAO.findById(id);
+            if (existing == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Product not found with ID: " + id));
+            }
+            int newId = product.getProductId() > 0 ? product.getProductId() : id;
+            if (newId != id) {
+                Product conflict = productDAO.findById(newId);
+                if (conflict != null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Product ID " + newId + " is already in use by another product (" + conflict.getProductName() + ")"));
+                }
+            }
+            productDAO.updateProduct(id, product);
+            return ResponseEntity.ok(Map.of("message", "Product updated successfully", "productId", newId));
         } catch (SQLException e) {
             return error(e);
         }

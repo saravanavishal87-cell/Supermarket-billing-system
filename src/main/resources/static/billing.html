@@ -229,7 +229,7 @@
   <!-- Audio Beep sound for barcode scanner -->
   <audio id="beepSound" src="https://actions.google.com/sounds/v1/sounds_library/office/keyboard_typing_fast.ogg" preload="auto"></audio>
 
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=2"></script>
   <script>
     const user = requireAuth();
     document.getElementById('header').innerHTML = renderHeader('Rahul Stores POS', 'Smart Billing & Checkout');
@@ -758,6 +758,7 @@
     }
 
     function openQuickCustomerModal() {
+      document.getElementById('qIdInput').value = '';
       document.getElementById('qNameInput').value = '';
       document.getElementById('qPhoneInput').value = '';
       document.getElementById('qEmailInput').value = '';
@@ -772,7 +773,9 @@
 
     async function saveQuickCustomer(e) {
       e.preventDefault();
+      const qIdVal = document.getElementById('qIdInput').value.trim();
       const payload = {
+        customerId: qIdVal ? parseInt(qIdVal) : 0,
         name: document.getElementById('qNameInput').value.trim(),
         phone: document.getElementById('qPhoneInput').value.trim(),
         email: document.getElementById('qEmailInput').value.trim(),
@@ -815,6 +818,10 @@
       </div>
       <div class="modal-body">
         <form id="quickCustomerForm" onsubmit="saveQuickCustomer(event)">
+          <div class="form-group">
+            <label for="qIdInput">Customer ID <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);">(Optional - Auto-generated if empty)</span></label>
+            <input type="number" id="qIdInput" min="1" placeholder="Auto-generated or custom ID">
+          </div>
           <div class="form-group">
             <label for="qNameInput">Customer Full Name *</label>
             <input type="text" id="qNameInput" placeholder="e.g. Ramesh Kumar" required>

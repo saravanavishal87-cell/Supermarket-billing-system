@@ -88,31 +88,72 @@ public class ProductDAO {
     }
 
     public void addProduct(Product product) throws SQLException {
-        String sql = "INSERT INTO products (barcode, product_name, category_id, price, stock_qty, unit) VALUES (?, ?, ?, ?, ?, ?)";
+        boolean hasCustomId = product.getProductId() > 0;
+        String sql = hasCustomId
+            ? "INSERT INTO products (product_id, barcode, product_name, category_id, price, stock_qty, unit) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            : "INSERT INTO products (barcode, product_name, category_id, price, stock_qty, unit) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, product.getBarcode());
-            ps.setString(2, product.getProductName());
-            ps.setInt(3, product.getCategoryId());
-            ps.setDouble(4, product.getPrice());
-            ps.setInt(5, product.getStockQty());
-            ps.setString(6, product.getUnit());
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            int idx = 1;
+            if (hasCustomId) {
+                ps.setInt(idx++, product.getProductId());
+            }
+            ps.setString(idx++, product.getBarcode());
+            ps.setString(idx++, product.getProductName());
+            ps.setInt(idx++, product.getCategoryId());
+            ps.setDouble(idx++, product.getPrice());
+            ps.setInt(idx++, product.getStockQty());
+            ps.setString(idx++, product.getUnit());
             ps.executeUpdate();
+            if (!hasCustomId) {
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        product.setProductId(keys.getInt(1));
+                    }
+                }
+            }
         }
     }
 
     public void updateProduct(Product product) throws SQLException {
-        String sql = "UPDATE products SET barcode=?, product_name=?, category_id=?, price=?, stock_qty=?, unit=? WHERE product_id=?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, product.getBarcode());
-            ps.setString(2, product.getProductName());
-            ps.setInt(3, product.getCategoryId());
-            ps.setDouble(4, product.getPrice());
-            ps.setInt(5, product.getStockQty());
-            ps.setString(6, product.getUnit());
-            ps.setInt(7, product.getProductId());
-            ps.executeUpdate();
+        updateProduct(product.getProductId(), product);
+    }
+
+    public void updateProduct(int oldId, Product product) throws SQLException {
+        int newId = product.getProductId() > 0 ? product.getProductId() : oldId;
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            boolean autoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            DatabaseConnection.disableForeignKeyChecks(conn);
+            try {
+                String sql = "UPDATE products SET product_id=?, barcode=?, product_name=?, category_id=?, price=?, stock_qty=?, unit=? WHERE product_id=?";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, newId);
+                    ps.setString(2, product.getBarcode());
+                    ps.setString(3, product.getProductName());
+                    ps.setInt(4, product.getCategoryId());
+                    ps.setDouble(5, product.getPrice());
+                    ps.setInt(6, product.getStockQty());
+                    ps.setString(7, product.getUnit());
+                    ps.setInt(8, oldId);
+                    ps.executeUpdate();
+                }
+                if (newId != oldId) {
+                    String updateItemsSql = "UPDATE bill_items SET product_id = ? WHERE product_id = ?";
+                    try (PreparedStatement ps = conn.prepareStatement(updateItemsSql)) {
+                        ps.setInt(1, newId);
+                        ps.setInt(2, oldId);
+                        ps.executeUpdate();
+                    }
+                }
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                DatabaseConnection.enableForeignKeyChecks(conn);
+                conn.setAutoCommit(autoCommit);
+            }
         }
     }
 

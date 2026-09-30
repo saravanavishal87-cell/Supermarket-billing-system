@@ -75,18 +75,27 @@ public class CustomerDAO {
     }
 
     public boolean addCustomer(Customer c) throws SQLException {
-        String sql = "INSERT INTO customers (name, phone, email, address) VALUES (?, ?, ?, ?)";
+        boolean hasCustomId = c.getCustomerId() > 0;
+        String sql = hasCustomId
+            ? "INSERT INTO customers (customer_id, name, phone, email, address) VALUES (?, ?, ?, ?, ?)"
+            : "INSERT INTO customers (name, phone, email, address) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, c.getName());
-            ps.setString(2, c.getPhone());
-            ps.setString(3, c.getEmail());
-            ps.setString(4, c.getAddress());
+            int idx = 1;
+            if (hasCustomId) {
+                ps.setInt(idx++, c.getCustomerId());
+            }
+            ps.setString(idx++, c.getName());
+            ps.setString(idx++, c.getPhone());
+            ps.setString(idx++, c.getEmail());
+            ps.setString(idx++, c.getAddress());
             int affected = ps.executeUpdate();
             if (affected > 0) {
-                try (ResultSet keys = ps.getGeneratedKeys()) {
-                    if (keys.next()) {
-                        c.setCustomerId(keys.getInt(1));
+                if (!hasCustomId) {
+                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                        if (keys.next()) {
+                            c.setCustomerId(keys.getInt(1));
+                        }
                     }
                 }
                 return true;
@@ -96,15 +105,44 @@ public class CustomerDAO {
     }
 
     public boolean updateCustomer(Customer c) throws SQLException {
-        String sql = "UPDATE customers SET name = ?, phone = ?, email = ?, address = ? WHERE customer_id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, c.getName());
-            ps.setString(2, c.getPhone());
-            ps.setString(3, c.getEmail());
-            ps.setString(4, c.getAddress());
-            ps.setInt(5, c.getCustomerId());
-            return ps.executeUpdate() > 0;
+        return updateCustomer(c.getCustomerId(), c);
+    }
+
+    public boolean updateCustomer(int oldId, Customer c) throws SQLException {
+        int newId = c.getCustomerId() > 0 ? c.getCustomerId() : oldId;
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            boolean autoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            DatabaseConnection.disableForeignKeyChecks(conn);
+            try {
+                String sql = "UPDATE customers SET customer_id = ?, name = ?, phone = ?, email = ?, address = ? WHERE customer_id = ?";
+                int affected;
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, newId);
+                    ps.setString(2, c.getName());
+                    ps.setString(3, c.getPhone());
+                    ps.setString(4, c.getEmail());
+                    ps.setString(5, c.getAddress());
+                    ps.setInt(6, oldId);
+                    affected = ps.executeUpdate();
+                }
+                if (newId != oldId) {
+                    String updateBillsSql = "UPDATE bills SET customer_id = ? WHERE customer_id = ?";
+                    try (PreparedStatement ps = conn.prepareStatement(updateBillsSql)) {
+                        ps.setInt(1, newId);
+                        ps.setInt(2, oldId);
+                        ps.executeUpdate();
+                    }
+                }
+                conn.commit();
+                return affected > 0;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                DatabaseConnection.enableForeignKeyChecks(conn);
+                conn.setAutoCommit(autoCommit);
+            }
         }
     }
 

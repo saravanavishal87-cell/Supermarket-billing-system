@@ -30,6 +30,12 @@ public class ShopDAO {
     }
 
     public boolean updateShopDetails(ShopDetails shop) throws SQLException {
+        if (shop.getImagePath() == null || shop.getImagePath().isBlank()) {
+            ShopDetails existing = getShopDetails();
+            if (existing != null && existing.getImagePath() != null) {
+                shop.setImagePath(existing.getImagePath());
+            }
+        }
         String sql = """
             MERGE INTO shop_details (id, shop_name, address, phone, email, gstin, image_path, auto_delete_months) KEY(id)
             VALUES (1, ?, ?, ?, ?, ?, ?, ?)

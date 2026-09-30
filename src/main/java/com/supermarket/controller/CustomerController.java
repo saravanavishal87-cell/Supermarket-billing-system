@@ -107,6 +107,12 @@ public class CustomerController {
             return ResponseEntity.badRequest().body(Map.of("error", "Customer phone is required"));
         }
         try {
+            if (customer.getCustomerId() > 0) {
+                Customer existingId = customerDAO.getById(customer.getCustomerId());
+                if (existingId != null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Customer ID " + customer.getCustomerId() + " is already in use by " + existingId.getName()));
+                }
+            }
             Customer existing = customerDAO.getByPhone(customer.getPhone().trim());
             if (existing != null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Customer with this phone number already exists"));
@@ -137,11 +143,24 @@ public class CustomerController {
             Customer existing = customerDAO.getById(id);
             if (existing == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Customer not found"));
+                        .body(Map.of("error", "Customer not found with ID: " + id));
             }
 
-            customer.setCustomerId(id);
-            boolean success = customerDAO.updateCustomer(customer);
+            int newId = customer.getCustomerId() > 0 ? customer.getCustomerId() : id;
+            if (newId != id) {
+                Customer conflict = customerDAO.getById(newId);
+                if (conflict != null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Customer ID " + newId + " is already in use by " + conflict.getName()));
+                }
+            }
+
+            Customer phoneOwner = customerDAO.getByPhone(customer.getPhone().trim());
+            if (phoneOwner != null && phoneOwner.getCustomerId() != id) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Customer with phone " + customer.getPhone() + " already exists (" + phoneOwner.getName() + ")"));
+            }
+
+            customer.setCustomerId(newId);
+            boolean success = customerDAO.updateCustomer(id, customer);
             if (success) {
                 return ResponseEntity.ok(customer);
             } else {
