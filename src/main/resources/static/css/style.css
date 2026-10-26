@@ -650,20 +650,6 @@ body {
   font-size: 0.75rem;
 }
 
-/* Print Rules */
-@media print {
-  body * { visibility: hidden; }
-  #receiptModal, #receiptModal * { visibility: visible; }
-  #receiptModal {
-    position: absolute;
-    left: 0; top: 0;
-    width: 100%;
-    background: white;
-    box-shadow: none;
-  }
-  .modal-header, .modal-footer { display: none !important; }
-}
-
 /* Products page */
 .products-layout {
   display: grid;
@@ -761,15 +747,122 @@ body {
   margin-top: 10px;
 }
 
+/* --- Unified Print & PDF Download Styles --- */
 @media print {
-  .header, .page-title-bar, .filter-bar, .btn, .modal-overlay, #recordExpenseBtn, #addCashierBtn {
+  @page {
+    margin: 8mm;
+    size: auto;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide interactive, navigation, background headers, and non-printable modals */
+  .header,
+  .page-title-bar,
+  .filter-bar,
+  .btn,
+  .actions,
+  .modal-close,
+  .modal-header,
+  .modal-footer,
+  .pos-layout,
+  .products-layout,
+  .input-tabs,
+  .panel-header,
+  #paymentModal,
+  #cameraModal,
+  #weightModal,
+  #customerModal,
+  #recordExpenseBtn,
+  #addCashierBtn,
+  .modal-overlay:not(#receiptModal) {
     display: none !important;
   }
-  body { background: white !important; }
-  .container { max-width: 100% !important; padding: 0 !important; }
-  .card, .statement-card { border: none !important; box-shadow: none !important; }
-  body * { visibility: hidden; }
-  .printable-area, .printable-area * { visibility: visible; }
-  .printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+
+  /* Hide background elements by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 1. POS RECEIPT PRINTING (billing.html) */
+  #receiptModal.active,
+  #receiptModal.active * {
+    visibility: visible !important;
+  }
+
+  #receiptModal.active {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    overflow: visible !important;
+  }
+
+  #receiptModal.active .modal-card {
+    position: static !important;
+    width: 100% !important;
+    max-width: 460px !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  #receiptModal.active .modal-body {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #receiptModal.active .receipt-slip {
+    border: 1px dashed #333 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    margin: 0 auto !important;
+    padding: 18px !important;
+    background: #fff !important;
+    page-break-inside: avoid;
+  }
+
+  /* 2. STATEMENTS & REPORTS PRINTING (monthly-income.html) */
+  .printable-area,
+  .printable-area * {
+    visibility: visible !important;
+  }
+
+  .printable-area {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .card, .statement-card {
+    border: none !important;
+    box-shadow: none !important;
+  }
 }
 

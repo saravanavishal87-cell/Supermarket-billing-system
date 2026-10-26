@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/css/style.css">
   <!-- HTML5 QR Code / Barcode Scanner library (deferred) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  <!-- HTML2PDF library for instant high-quality bill downloading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
 <body>
   <div id="header"></div>
@@ -72,31 +74,66 @@
       </div>
 
       <div class="totals">
-        <div style="background: #e8f5e9; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #c8e6c9;">
+        <div style="background: #f0fdf4; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #bbf7d0;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-weight: 700; font-size: 0.85rem; color: var(--primary-dark);">👤 Customer Purchase Link</span>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <select id="customerSelect" style="border:1px solid var(--border);padding:3px 6px;border-radius:4px;font-size:0.8rem;max-width:140px;" onchange="onCustomerSelectChange(this)">
+            <span style="font-weight: 700; font-size: 0.85rem; color: var(--primary-dark);">👤 Customer Selection</span>
+            <div style="display: flex; gap: 4px; align-items: center;">
+              <select id="customerSelect" style="border:1px solid var(--border);padding:3px 6px;border-radius:4px;font-size:0.78rem;max-width:130px;" onchange="onCustomerSelectChange(this)">
                 <option value="Walk-in Customer">-- Pick Saved --</option>
               </select>
-              <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="openQuickCustomerModal()">+ New</button>
+              <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.75rem;" onclick="resetToWalkInCustomer()" title="Reset to Walk-in Customer">Walk-in</button>
+              <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 0.75rem;" onclick="openQuickCustomerModal()">+ New</button>
             </div>
           </div>
 
-          <!-- Quick lookup by Customer ID or Mobile Number -->
+          <!-- 3 Customer Selection Options -->
+          <div style="margin-bottom: 8px;">
+            <div style="font-size: 0.72rem; font-weight: 700; color: #166534; margin-bottom: 4px; display: flex; justify-content: space-between;">
+              <span>SELECT / SEARCH OPTION:</span>
+              <span id="lookupModeLabel" style="color: #15803d; font-weight: 600;">Active: Mobile Number</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; background: #e2fbe8; padding: 3px; border-radius: 6px; border: 1px solid #bbf7d0;">
+              <button type="button" id="optCustomerId" onclick="setCustomerLookupMode('id')"
+                      style="border:none; padding:5px 4px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:600; background:white; color:#374151; transition:all 0.15s ease;">
+                🆔 Customer ID
+              </button>
+              <button type="button" id="optCustomerPhone" onclick="setCustomerLookupMode('phone')"
+                      style="border:none; padding:5px 4px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:700; background:var(--primary); color:white; transition:all 0.15s ease;">
+                📱 Mobile Number
+              </button>
+              <button type="button" id="optCustomerName" onclick="setCustomerLookupMode('name')"
+                      style="border:none; padding:5px 4px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:600; background:white; color:#374151; transition:all 0.15s ease;">
+                👤 Customer Name
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick lookup input by selected option -->
           <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-            <input type="text" id="customerLookupInput" placeholder="Enter Customer ID or Mobile No..." 
+            <input type="tel" id="customerLookupInput" list="customerDatalist" placeholder="Enter Mobile Number (e.g. 9876543210)..." 
                    style="flex: 1; border: 1px solid var(--border); padding: 6px 8px; border-radius: 4px; font-size: 0.85rem;"
-                   onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupCustomerByIdOrPhone();}">
-            <button type="button" class="btn btn-primary" style="padding: 5px 12px; font-size: 0.8rem;" onclick="lookupCustomerByIdOrPhone()">🔍 Find</button>
+                   oninput="onCustomerLookupInput(this.value)"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault(); lookupCustomer();}">
+            <datalist id="customerDatalist"></datalist>
+            <button type="button" class="btn btn-primary" style="padding: 5px 12px; font-size: 0.8rem;" onclick="lookupCustomer()">🔍 Find</button>
           </div>
 
           <div id="customerBadge" style="display:none; font-size:0.8rem; padding:6px 10px; background:#dcfce7; color:#166534; border-radius:4px; margin-bottom:8px; border:1px solid #bbf7d0;"></div>
 
-          <input type="hidden" id="selectedCustomerId" value="">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            <input type="text" id="customerName" value="Walk-in Customer" placeholder="Customer Name" style="border:1px solid var(--border);padding:6px;border-radius:4px;font-size:0.85rem;" onfocus="if(this.value==='Walk-in Customer') this.value=''">
-            <input type="tel" id="customerPhone" placeholder="Mobile No. (e.g. 9876543210)" style="border:1px solid var(--border);padding:6px;border-radius:4px;font-size:0.85rem;">
+          <!-- 3 Customer Details Fields -->
+          <div style="display: grid; grid-template-columns: 85px 1fr 1fr; gap: 6px;">
+            <div>
+              <label style="display:block; font-size:0.7rem; color:#374151; font-weight:600; margin-bottom:2px;">Customer ID</label>
+              <input type="text" id="selectedCustomerId" placeholder="ID #" readonly style="width:100%; border:1px solid var(--border); padding:5px 6px; border-radius:4px; font-size:0.8rem; background:#f9fafb; font-weight:700; color:var(--primary);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.7rem; color:#374151; font-weight:600; margin-bottom:2px;">Customer Name</label>
+              <input type="text" id="customerName" value="Walk-in Customer" placeholder="Name of Customer" style="width:100%; border:1px solid var(--border); padding:5px 6px; border-radius:4px; font-size:0.8rem;" onfocus="if(this.value==='Walk-in Customer') this.value=''">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.7rem; color:#374151; font-weight:600; margin-bottom:2px;">Mobile Number</label>
+              <input type="tel" id="customerPhone" placeholder="Mobile Number" style="width:100%; border:1px solid var(--border); padding:5px 6px; border-radius:4px; font-size:0.8rem;">
+            </div>
           </div>
         </div>
         <div class="row"><span>Subtotal:</span><span id="subtotal" style="font-weight:600;">Rs. 0.00</span></div>
@@ -104,7 +141,7 @@
           <span>Discount (Rs.):</span>
           <input type="number" id="discount" value="0" min="0" step="1" style="width:90px;border:1px solid var(--border);padding:4px;border-radius:4px;text-align:right;" oninput="updateTotals()">
         </div>
-        <div class="row"><span>Tax (5% GST):</span><span id="taxAmount">Rs. 0.00</span></div>
+        <div class="row"><span>Tax (5% GST on > ₹1000):</span><span id="taxAmount">Rs. 0.00</span></div>
         <div class="row grand"><span>GRAND TOTAL:</span><span id="grandTotal">Rs. 0.00</span></div>
       </div>
 
@@ -156,11 +193,12 @@
 
         <!-- UPI Mode Details -->
         <div id="upiFields" style="display:none;">
-          <div class="qr-container">
-            <div style="font-weight:600;margin-bottom:8px;color:var(--primary);">Rahul Stores Google Pay / UPI QR Code</div>
-            <img id="rahulQrCodeImg" class="qr-img" src="/images/rahul_stores_qr.png" alt="Rahul Stores Google Pay QR Code" style="width:210px;height:210px;object-fit:contain;background:white;">
-            <div class="pulse-status"><span class="dot"></span> Scan QR code using GPay / PhonePe / Paytm / BHIM</div>
-            <div style="margin-top:8px;font-size:0.85rem;color:var(--muted);">Store: <strong style="color:var(--text);">Rahul Stores</strong></div>
+          <div class="qr-container" style="padding:10px 14px;">
+            <div style="font-weight:600;margin-bottom:6px;color:var(--primary);font-size:0.95rem;">Google Pay / UPI QR Code</div>
+            <img id="rahulQrCodeImg" class="qr-img" src="/images/upi_qr_code.png" alt="Google Pay UPI QR Code" style="width:160px;height:auto;max-height:220px;object-fit:contain;background:white;border-radius:8px;padding:3px;box-shadow:0 2px 8px rgba(0,0,0,0.1);" onerror="this.src='/images/rahul_stores_qr.png';">
+            <div class="pulse-status" style="margin-top:6px;font-size:0.8rem;"><span class="dot"></span> Scan QR code using GPay / PhonePe / Paytm / BHIM</div>
+            <div style="margin-top:4px;font-size:0.85rem;color:var(--text);">UPI ID: <strong style="color:var(--primary);user-select:all;">saravanavishal06@oksbi</strong></div>
+            <div style="font-size:0.75rem;color:var(--muted);">State Bank of India</div>
           </div>
           <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="simulateUpiSuccess()">⚡ Confirm Payment Received</button>
         </div>
@@ -215,13 +253,84 @@
         <button class="modal-close" onclick="closeReceiptModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="receipt-slip" id="receiptSlipContent">
+        <div class="receipt-slip printable-area" id="receiptSlipContent">
           <!-- Filled dynamically -->
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
         <button class="btn btn-secondary" onclick="closeReceiptModal()">Close</button>
-        <button class="btn btn-primary" onclick="printReceipt()">🖨️ Print Receipt</button>
+        <button class="btn btn-primary" onclick="downloadBillPdf()" title="Download PDF of this bill">📥 Download Bill (PDF)</button>
+        <button class="btn btn-secondary" onclick="printReceipt()" title="Print receipt or save as PDF">🖨️ Print Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEIGHT / GRAM INPUT MODAL FOR VEGETABLES & WEIGHTED PRODUCTS -->
+  <div class="modal-overlay" id="weightModal">
+    <div class="modal-card" style="max-width:440px;">
+      <div class="modal-header" style="background:var(--primary);color:white;padding:12px 18px;">
+        <h3 id="weightModalTitle" style="margin:0;font-size:1.15rem;color:white;display:flex;align-items:center;gap:8px;">
+          ⚖️ Weight Input
+        </h3>
+        <button class="modal-close" style="color:white;" onclick="closeWeightModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:18px;">
+        <!-- Product info card -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:10px 14px;border-radius:8px;margin-bottom:14px;">
+          <div style="font-weight:700;font-size:1.15rem;color:#166534;" id="weightProductName">Vegetable Name</div>
+          <div style="font-size:0.85rem;color:#15803d;margin-top:2px;" id="weightProductRateBreakdown">Rate breakdown</div>
+          <div style="font-size:0.75rem;color:#6b7280;margin-top:2px;" id="weightProductStock">Stock</div>
+        </div>
+
+        <!-- Quick 1-click preset weight buttons -->
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text);">
+            Quick Presets (Common Gram Weights):
+          </label>
+          <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:6px;">
+            <button type="button" class="btn btn-secondary weight-preset-btn" data-grams="100" onclick="setPresetGrams(100)">100 g</button>
+            <button type="button" class="btn btn-secondary weight-preset-btn" data-grams="250" onclick="setPresetGrams(250)">250 g</button>
+            <button type="button" class="btn btn-secondary weight-preset-btn" data-grams="500" onclick="setPresetGrams(500)">500 g</button>
+            <button type="button" class="btn btn-secondary weight-preset-btn" data-grams="750" onclick="setPresetGrams(750)">750 g</button>
+            <button type="button" class="btn btn-secondary weight-preset-btn" data-grams="1000" onclick="setPresetGrams(1000)">1 kg (1000g)</button>
+            <button type="button" class="btn btn-secondary weight-preset-btn" data-grams="1500" onclick="setPresetGrams(1500)">1.5 kg (1500g)</button>
+          </div>
+        </div>
+
+        <!-- Custom Weight Entry -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:8px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label for="customGramsInput" style="font-weight:700;font-size:0.85rem;color:var(--text);">Enter Exact Weight (Scale):</label>
+            <span style="font-size:0.75rem;color:var(--muted);">Grams (g)</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" id="customGramsInput" placeholder="e.g. 250" min="1" step="any"
+                   style="flex:1;font-size:1.3rem;font-weight:700;padding:8px 12px;border:2px solid var(--primary);border-radius:6px;text-align:right;"
+                   oninput="onGramsInput(this.value)">
+            <span style="font-weight:700;font-size:1rem;color:var(--primary);min-width:40px;">g</span>
+          </div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;">
+            <span>In Kilograms: <strong id="weightKgDisplay" style="color:var(--text);">0.250 kg</strong></span>
+            <span>Rate / Gram: <strong id="weightPerGramDisplay" style="color:var(--primary);">₹0.05</strong></span>
+          </div>
+        </div>
+
+        <!-- Calculated Live Amount Box -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#ecfdf5;border-radius:8px;border:1.5px solid #10b981;">
+          <div>
+            <div style="font-size:0.75rem;text-transform:uppercase;color:#047857;font-weight:700;">Calculated Item Total</div>
+            <div style="font-size:0.82rem;color:#065f46;" id="weightFormula">250g × ₹0.05/g</div>
+          </div>
+          <div style="font-size:1.5rem;font-weight:800;color:#065f46;" id="weightTotalDisplay">
+            Rs. 12.50
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:12px 18px;display:flex;gap:10px;">
+        <button class="btn btn-secondary" onclick="closeWeightModal()" style="flex:1;">Cancel</button>
+        <button class="btn btn-primary" id="confirmWeightBtn" onclick="confirmWeightAddToCart()" style="flex:2;font-size:1rem;padding:9px;">
+          🛒 Add to Bill (Enter)
+        </button>
       </div>
     </div>
   </div>
@@ -231,6 +340,16 @@
 
   <script src="/js/api.js?v=2"></script>
   <script>
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     const user = requireAuth();
     document.getElementById('header').innerHTML = renderHeader('Rahul Stores POS', 'Smart Billing & Checkout');
 
@@ -278,7 +397,7 @@
       if (!idVal) { alert('Please enter a Product ID'); return; }
       try {
         const product = await apiGet('/products/' + idVal);
-        addToCart(product, 1);
+        handleProductSelect(product);
         playBeep();
         document.getElementById('productIdInput').value = '';
         document.getElementById('productIdInput').focus();
@@ -290,7 +409,7 @@
     async function lookupBarcode(code) {
       try {
         const product = await apiGet('/products/barcode/' + code);
-        addToCart(product, 1);
+        handleProductSelect(product);
         playBeep();
         document.getElementById('searchInput').value = '';
       } catch (err) { alert('Product not found for barcode: ' + code); }
@@ -313,6 +432,15 @@
 
     document.getElementById('productIdInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') lookupProductId();
+    });
+
+    document.getElementById('customGramsInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmWeightAddToCart();
+      } else if (e.key === 'Escape') {
+        closeWeightModal();
+      }
     });
 
     // --- HARDWARE USB BARCODE SCANNER LISTENER ---
@@ -392,20 +520,242 @@
       } catch(e) {}
     }
 
+    // --- WEIGHED ITEM & GRAM CALCULATION HELPERS ---
+    function isWeighedProduct(product) {
+      if (!product) return false;
+      const unit = (product.unit || '').trim().toLowerCase();
+      const cat = (product.categoryName || '').trim().toLowerCase();
+      return unit === 'kg' || unit === 'g' || unit === 'gram' || unit === 'gm' ||
+             cat === 'vegetables' || cat === 'fruits';
+    }
+
+    let currentWeightProduct = null;
+    let currentWeightCartIndex = -1;
+
+    function checkAiExpiryAlert(product) {
+      if (!product || !product.expiryDate) return true;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const exp = new Date(product.expiryDate);
+      exp.setHours(0,0,0,0);
+      const diffDays = Math.round((exp - today) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 0) {
+        return confirm(`🚨 AI SAFETY ALERT: EXPIRED PRODUCT DETECTED!\n\n"${product.productName}" expired ${Math.abs(diffDays)} day(s) ago (${product.expiryDate}).\nSelling expired food products violates supermarket quality guidelines.\n\nOverride and force-add this product to the bill anyway?`);
+      } else if (diffDays <= 3) {
+        showAiToast(`⏰ AI Clearance Alert: "${product.productName}" expires in ${diffDays} day(s)! AI suggests 50% discount.`);
+      } else if (diffDays <= 7) {
+        showAiToast(`⏰ AI Freshness Alert: "${product.productName}" expires in ${diffDays} days.`);
+      }
+      return true;
+    }
+
+    function showAiToast(message) {
+      let toast = document.getElementById('aiBillingToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'aiBillingToast';
+        toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e1b4b;color:#f8fafc;padding:12px 18px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.3);z-index:9999;font-size:0.85rem;border-left:4px solid #a855f7;transition:all 0.3s ease;display:flex;align-items:center;gap:10px;';
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = `<span>🤖</span> <div>${escapeHtml(message)}</div>`;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+      clearTimeout(window.aiToastTimeout);
+      window.aiToastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+      }, 4500);
+    }
+
+    function handleProductSelect(product) {
+      if (!checkAiExpiryAlert(product)) return;
+      if (isWeighedProduct(product)) {
+        openWeightModal(product, -1);
+      } else {
+        addToCart(product, 1);
+      }
+    }
+
+    function openWeightModal(product, cartIndex = -1) {
+      currentWeightProduct = product;
+      currentWeightCartIndex = cartIndex;
+      
+      const unit = (product.unit || 'kg').toLowerCase();
+      const price = product.price;
+      
+      document.getElementById('weightModalTitle').textContent = `⚖️ Weighed Item: ${product.productName}`;
+      document.getElementById('weightProductName').textContent = product.productName;
+      document.getElementById('weightProductStock').textContent = `Available Stock: ${product.stockQty} ${product.unit}`;
+      
+      let rateText = '';
+      let perGramRate = 0;
+      if (unit === 'kg') {
+        perGramRate = price / 1000;
+        rateText = `Rate: ${formatCurrency(price)} / kg &nbsp;|&nbsp; <strong>₹${perGramRate.toFixed(3)} / gram</strong> &nbsp;|&nbsp; <strong>₹${(perGramRate * 100).toFixed(2)} per 100g</strong>`;
+      } else if (unit === 'g' || unit === 'gram') {
+        perGramRate = price;
+        rateText = `Rate: ${formatCurrency(price)} / gram &nbsp;|&nbsp; <strong>₹${(perGramRate * 100).toFixed(2)} per 100g</strong>`;
+      } else {
+        perGramRate = price / 1000;
+        rateText = `Rate: ${formatCurrency(price)} / ${product.unit} (₹${perGramRate.toFixed(3)} / gram)`;
+      }
+      document.getElementById('weightProductRateBreakdown').innerHTML = rateText;
+      document.getElementById('weightPerGramDisplay').textContent = `₹${perGramRate.toFixed(3)}`;
+      
+      let initialGrams = 250;
+      if (cartIndex >= 0 && cart[cartIndex]) {
+        const existing = cart[cartIndex];
+        initialGrams = (existing.unit === 'kg') ? Math.round(existing.quantity * 1000) : existing.quantity;
+      }
+      
+      document.getElementById('customGramsInput').value = initialGrams;
+      onGramsInput(initialGrams);
+      
+      document.getElementById('weightModal').classList.add('active');
+      setTimeout(() => {
+        const input = document.getElementById('customGramsInput');
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 100);
+    }
+
+    function closeWeightModal() {
+      document.getElementById('weightModal').classList.remove('active');
+      currentWeightProduct = null;
+      currentWeightCartIndex = -1;
+    }
+
+    function onGramsInput(val) {
+      const grams = parseFloat(val) || 0;
+      if (!currentWeightProduct) return;
+      
+      const unit = (currentWeightProduct.unit || 'kg').toLowerCase();
+      const price = currentWeightProduct.price;
+      let total = 0;
+      
+      if (unit === 'kg') {
+        total = (grams / 1000) * price;
+        document.getElementById('weightKgDisplay').textContent = `${(grams / 1000).toFixed(3)} kg`;
+        document.getElementById('weightFormula').textContent = `${grams}g × ₹${(price / 1000).toFixed(3)}/g`;
+      } else if (unit === 'g' || unit === 'gram') {
+        total = grams * price;
+        document.getElementById('weightKgDisplay').textContent = `${(grams / 1000).toFixed(3)} kg`;
+        document.getElementById('weightFormula').textContent = `${grams}g × ₹${price.toFixed(3)}/g`;
+      } else {
+        total = (grams / 1000) * price;
+        document.getElementById('weightKgDisplay').textContent = `${(grams / 1000).toFixed(3)} ${currentWeightProduct.unit}`;
+        document.getElementById('weightFormula').textContent = `${grams}g × ₹${(price / 1000).toFixed(3)}/g`;
+      }
+      
+      document.querySelectorAll('.weight-preset-btn').forEach(btn => {
+        const g = parseInt(btn.dataset.grams);
+        btn.style.background = (g === Math.round(grams)) ? 'var(--primary)' : '';
+        btn.style.color = (g === Math.round(grams)) ? 'white' : '';
+      });
+      
+      document.getElementById('weightTotalDisplay').textContent = formatCurrency(Math.round(total * 100) / 100);
+    }
+
+    function setPresetGrams(grams) {
+      document.getElementById('customGramsInput').value = grams;
+      onGramsInput(grams);
+    }
+
+    function confirmWeightAddToCart() {
+      const grams = parseFloat(document.getElementById('customGramsInput').value) || 0;
+      if (grams <= 0) {
+        alert('Please enter a valid weight in grams (e.g. 250)');
+        return;
+      }
+      
+      const product = currentWeightProduct;
+      const unit = (product.unit || 'kg').toLowerCase();
+      let qty = (unit === 'kg') ? (grams / 1000) : grams;
+      let lineTotal = Math.round(((unit === 'kg' ? (grams / 1000) * product.price : grams * product.price)) * 100) / 100;
+      
+      if (product.stockQty < qty) {
+        alert(`Insufficient stock! Available: ${product.stockQty} ${product.unit}, requested: ${qty} ${product.unit} (${grams}g)`);
+        return;
+      }
+      
+      if (currentWeightCartIndex >= 0 && cart[currentWeightCartIndex]) {
+        cart[currentWeightCartIndex].quantity = qty;
+        cart[currentWeightCartIndex].quantityGrams = grams;
+        cart[currentWeightCartIndex].lineTotal = lineTotal;
+      } else {
+        const existing = cart.find(i => i.productId === product.productId);
+        if (existing) {
+          if (existing.quantity + qty > product.stockQty) {
+            alert('Insufficient stock!');
+            return;
+          }
+          existing.quantity = Math.round((existing.quantity + qty) * 1000) / 1000;
+          existing.quantityGrams = (existing.quantityGrams || 0) + grams;
+          existing.lineTotal = Math.round((existing.unitPrice * existing.quantity) * 100) / 100;
+        } else {
+          cart.push({
+            productId: product.productId,
+            productName: product.productName,
+            barcode: product.barcode,
+            quantity: qty,
+            quantityGrams: grams,
+            unit: product.unit,
+            unitPrice: product.price,
+            lineTotal: lineTotal
+          });
+        }
+      }
+      
+      closeWeightModal();
+      renderCart();
+      playBeep();
+    }
+
     // --- CART MANAGEMENT ---
     function renderProductList(products) {
       const list = document.getElementById('productList');
-      list.innerHTML = products.map(p => `
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      list.innerHTML = products.map(p => {
+        const weighed = isWeighedProduct(p);
+        let rateHtml = `<strong>${formatCurrency(p.price)}</strong>`;
+        if (p.unit === 'kg') {
+          rateHtml = `<strong>${formatCurrency(p.price)}/kg</strong> <span style="font-size:0.75rem;color:#059669;font-weight:600;">(₹${(p.price/1000).toFixed(3)}/g | ₹${(p.price/10).toFixed(2)}/100g)</span>`;
+        } else if (p.unit === 'g' || p.unit === 'gram') {
+          rateHtml = `<strong>${formatCurrency(p.price)}/g</strong> <span style="font-size:0.75rem;color:#059669;font-weight:600;">(₹${(p.price*100).toFixed(2)}/100g)</span>`;
+        }
+
+        let expBadge = '';
+        if (p.expiryDate) {
+          const exp = new Date(p.expiryDate);
+          exp.setHours(0,0,0,0);
+          const diffDays = Math.round((exp - today) / (1000 * 60 * 60 * 24));
+          if (diffDays <= 0) {
+            expBadge = `<span style="background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;margin-left:4px;border:1px solid #fca5a5;">🔴 Expired</span>`;
+          } else if (diffDays <= 7) {
+            expBadge = `<span style="background:#ffedd5;color:#c2410c;padding:1px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;margin-left:4px;border:1px solid #fdba74;">⏰ ${diffDays}d left</span>`;
+          }
+        }
+
+        return `
         <li class="product-item" data-id="${p.productId}">
-          <div class="name"><span class="id-badge">ID #${p.productId}</span> ${p.productName}</div>
-          <div class="meta">Barcode: ${p.barcode} | Stock: ${p.stockQty} ${p.unit} | <strong>${formatCurrency(p.price)}</strong></div>
-        </li>
-      `).join('');
+          <div class="name">
+            <span class="id-badge">ID #${p.productId}</span> ${escapeHtml(p.productName)}
+            ${weighed ? '<span style="background:#ecfdf5;color:#047857;padding:1px 6px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-left:4px;">⚖️ By Gram</span>' : ''}
+            ${expBadge}
+          </div>
+          <div class="meta">${p.barcode ? 'Barcode: ' + p.barcode + ' | ' : ''}Stock: ${p.stockQty} ${p.unit} | ${rateHtml}</div>
+        </li>`;
+      }).join('');
 
       list.querySelectorAll('.product-item').forEach(el => {
         el.addEventListener('click', () => {
           const product = allProducts.find(p => p.productId === parseInt(el.dataset.id));
-          if (product) addToCart(product, 1);
+          if (product) handleProductSelect(product);
         });
       });
     }
@@ -422,43 +772,90 @@
           return;
         }
         existing.quantity += qty;
-        existing.lineTotal = existing.unitPrice * existing.quantity;
+        existing.lineTotal = Math.round(existing.unitPrice * existing.quantity * 100) / 100;
       } else {
         cart.push({
           productId: product.productId,
           productName: product.productName,
           barcode: product.barcode,
           quantity: qty,
+          quantityGrams: (product.unit === 'kg') ? qty * 1000 : null,
+          unit: product.unit,
           unitPrice: product.price,
-          lineTotal: product.price * qty
+          lineTotal: Math.round(product.price * qty * 100) / 100
         });
       }
       renderCart();
     }
 
+    function openWeightModalForCartIndex(i) {
+      if (i < 0 || i >= cart.length) return;
+      const item = cart[i];
+      let product = allProducts.find(p => p.productId === item.productId);
+      if (!product) {
+        product = {
+          productId: item.productId,
+          productName: item.productName,
+          price: item.unitPrice,
+          unit: item.unit || 'kg',
+          stockQty: 9999
+        };
+      }
+      openWeightModal(product, i);
+    }
+
     function renderCart() {
       const tbody = document.getElementById('cartBody');
-      tbody.innerHTML = cart.map((item, i) => `
+      tbody.innerHTML = cart.map((item, i) => {
+        const product = allProducts.find(p => p.productId === item.productId);
+        const weighed = item.unit === 'kg' || item.unit === 'g' || item.unit === 'gram' || (product && isWeighedProduct(product));
+        
+        let qtyCell = '';
+        let priceCell = '';
+        if (weighed) {
+          const grams = item.quantityGrams || (item.unit === 'kg' ? Math.round(item.quantity * 1000) : Math.round(item.quantity));
+          const kgStr = (item.unit === 'kg') ? ` (${Number(item.quantity).toFixed(item.quantity % 1 === 0 ? 0 : 3)} kg)` : '';
+          qtyCell = `
+            <div style="display:flex;align-items:center;gap:4px;" onclick="event.stopPropagation();">
+              <button type="button" class="btn btn-secondary" onclick="openWeightModalForCartIndex(${i})" 
+                      style="padding:3px 7px;font-size:0.8rem;background:#ecfdf5;color:#047857;border-color:#a7f3d0;font-weight:700;" 
+                      title="Click to adjust weight in grams">
+                ⚖️ ${grams}g${kgStr}
+              </button>
+            </div>`;
+          priceCell = `
+            <div>
+              ${formatCurrency(item.unitPrice)}${item.unit === 'kg' ? '/kg' : ''}
+              <div style="font-size:0.72rem;color:#059669;font-weight:600;">(₹${(item.unit === 'kg' ? item.unitPrice / 1000 : item.unitPrice).toFixed(3)}/g)</div>
+            </div>`;
+        } else {
+          qtyCell = `
+            <div style="display:flex;align-items:center;gap:4px;" onclick="event.stopPropagation();">
+              <input type="number" value="${item.quantity}" min="1" step="1" style="width:50px;padding:2px;text-align:center;" 
+                     onchange="updateCartQty(${i}, this.value)">
+              <span style="font-size:0.75rem;color:var(--muted);">${escapeHtml(item.unit || 'pcs')}</span>
+            </div>`;
+          priceCell = formatCurrency(item.unitPrice);
+        }
+        
+        return `
         <tr onclick="selectRow(${i})" style="${selectedRow === i ? 'background:var(--primary-light);font-weight:bold;' : ''}">
           <td>${i + 1}</td>
-          <td>${item.productName}</td>
-          <td>
-            <input type="number" value="${item.quantity}" min="1" style="width:55px;padding:2px;text-align:center;" 
-                   onchange="updateCartQty(${i}, this.value)" onclick="event.stopPropagation()">
-          </td>
-          <td>${formatCurrency(item.unitPrice)}</td>
-          <td>${formatCurrency(item.lineTotal)}</td>
-        </tr>
-      `).join('');
+          <td>${escapeHtml(item.productName)}</td>
+          <td>${qtyCell}</td>
+          <td>${priceCell}</td>
+          <td style="font-weight:700;">${formatCurrency(item.lineTotal)}</td>
+        </tr>`;
+      }).join('');
 
-      const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
-      document.getElementById('itemCount').textContent = totalItems + ' items';
+      const totalItems = cart.length;
+      document.getElementById('itemCount').textContent = `${totalItems} item${totalItems === 1 ? '' : 's'}`;
       updateTotals();
     }
 
     function updateCartQty(index, newQty) {
-      const q = parseInt(newQty);
-      if (isNaN(q) || q < 1) return;
+      const q = parseFloat(newQty);
+      if (isNaN(q) || q <= 0) return;
       const product = allProducts.find(p => p.productId === cart[index].productId);
       if (product && q > product.stockQty) {
         alert('Stock limit exceeded!');
@@ -466,7 +863,7 @@
         return;
       }
       cart[index].quantity = q;
-      cart[index].lineTotal = cart[index].unitPrice * q;
+      cart[index].lineTotal = Math.round(cart[index].unitPrice * q * 100) / 100;
       renderCart();
     }
 
@@ -488,6 +885,7 @@
         cart = [];
         selectedRow = -1;
         document.getElementById('discount').value = 0;
+        resetToWalkInCustomer();
         renderCart();
       }
     }
@@ -496,7 +894,8 @@
       const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
       const discount = parseFloat(document.getElementById('discount').value) || 0;
       const taxable = Math.max(0, subtotal - discount);
-      const tax = taxable * 0.05;
+      // Charge 5% tax only if purchase/taxable amount is greater than 1000 Rs
+      const tax = taxable > 1000 ? (taxable * 0.05) : 0;
       const grand = taxable + tax;
 
       document.getElementById('subtotal').textContent = formatCurrency(subtotal);
@@ -558,11 +957,12 @@
 
       let custName = document.getElementById('customerName').value.trim() || 'Walk-in Customer';
       let custPhone = document.getElementById('customerPhone').value.trim();
-      let custIdVal = document.getElementById('selectedCustomerId').value.trim();
+      let custIdRaw = document.getElementById('selectedCustomerId').value.replace('#', '').trim();
+      let custIdVal = (custIdRaw && !isNaN(parseInt(custIdRaw))) ? parseInt(custIdRaw) : null;
 
       let paymentReq = {
         cashierId: user.userId,
-        customerId: custIdVal ? parseInt(custIdVal) : null,
+        customerId: custIdVal,
         customerName: custName,
         customerPhone: custPhone,
         items: cart,
@@ -578,7 +978,7 @@
         }
         paymentReq.cashTendered = cashTendered;
       } else if (currentPaymentMode === 'UPI') {
-        paymentReq.upiId = 'rahulstores@upi';
+        paymentReq.upiId = 'saravanavishal06@oksbi';
         paymentReq.transactionRef = 'UPI-' + Math.floor(100000 + Math.random() * 900000);
       } else if (currentPaymentMode === 'CARD') {
         paymentReq.cardType = document.getElementById('cardType').value;
@@ -597,14 +997,27 @@
     // --- RECEIPT MODAL & PRINTING ---
     function showReceipt(billData) {
       const dateStr = new Date().toLocaleString();
-      const itemsHtml = cart.map((item, i) => `
+      const itemsHtml = cart.map((item, i) => {
+        let qtyDisplay = item.quantity;
+        let priceDisplay = formatCurrency(item.unitPrice);
+        if (item.unit === 'kg') {
+          const grams = item.quantityGrams || Math.round(item.quantity * 1000);
+          qtyDisplay = `${grams}g (${Number(item.quantity).toFixed(item.quantity % 1 === 0 ? 0 : 3)}kg)`;
+          priceDisplay += '/kg';
+        } else if (item.unit === 'g' || item.unit === 'gram') {
+          qtyDisplay = `${item.quantity}g`;
+          priceDisplay += '/g';
+        } else if (item.unit) {
+          qtyDisplay = `${item.quantity} ${item.unit}`;
+        }
+        return `
         <tr>
-          <td>${i+1}. ${item.productName}</td>
-          <td style="text-align:center">${item.quantity}</td>
-          <td style="text-align:right">${formatCurrency(item.unitPrice)}</td>
+          <td>${i+1}. ${escapeHtml(item.productName)}</td>
+          <td style="text-align:center">${qtyDisplay}</td>
+          <td style="text-align:right">${priceDisplay}</td>
           <td style="text-align:right">${formatCurrency(item.lineTotal)}</td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
 
       const html = `
         <div class="receipt-header">
@@ -635,14 +1048,15 @@
         <div class="receipt-totals">
           <div class="r-row"><span>Subtotal:</span><span>${formatCurrency(billData.subtotal)}</span></div>
           <div class="r-row"><span>Discount:</span><span>-${formatCurrency(billData.discount)}</span></div>
-          <div class="r-row"><span>GST Tax (5%):</span><span>${formatCurrency(billData.taxAmount)}</span></div>
+          <div class="r-row"><span>GST Tax (5% on > ₹1000):</span><span>${formatCurrency(billData.taxAmount)}</span></div>
           <div class="r-row r-grand"><span>GRAND TOTAL:</span><span>${formatCurrency(billData.grandTotal)}</span></div>
           <div class="r-row" style="font-size:0.8rem;color:#444;margin-top:6px;">
             <span>Details:</span><span>${billData.paymentDetails}</span>
           </div>
         </div>
         <div class="receipt-footer">
-          <img src="/images/rahul_stores_qr.png" style="width:110px;height:110px;margin-bottom:4px;object-fit:contain;" alt="Rahul Stores QR"><br>
+          <img src="/images/upi_qr_code.png" style="width:120px;height:auto;max-height:165px;margin-bottom:4px;object-fit:contain;border-radius:4px;" alt="UPI QR Code" onerror="this.src='/images/rahul_stores_qr.png';"><br>
+          <span style="font-size:0.75rem;color:#333;">UPI ID: <strong>saravanavishal06@oksbi</strong></span><br>
           Scan QR to pay / verify invoice authenticity<br>
           <strong>*** Thank You For Shopping At Rahul Stores! ***</strong>
         </div>
@@ -651,10 +1065,11 @@
       document.getElementById('receiptSlipContent').innerHTML = html;
       document.getElementById('receiptModal').classList.add('active');
 
+      currentBillData = billData;
       cart = [];
       selectedRow = -1;
       document.getElementById('discount').value = 0;
-      document.getElementById('customerName').value = 'Walk-in Customer';
+      resetToWalkInCustomer();
       renderCart();
       loadProducts();
     }
@@ -663,13 +1078,151 @@
       document.getElementById('receiptModal').classList.remove('active');
     }
 
+    let currentBillData = null;
+
+    async function downloadBillPdf() {
+      const receiptEl = document.getElementById('receiptSlipContent');
+      if (!receiptEl || !receiptEl.innerHTML.trim()) {
+        alert('No receipt content available to download.');
+        return;
+      }
+
+      const billNum = (currentBillData && currentBillData.billNumber)
+        ? currentBillData.billNumber
+        : (receiptEl.innerText.match(/Bill No:\s*([^\n\r]+)/) ? receiptEl.innerText.match(/Bill No:\s*([^\n\r]+)/)[1].trim() : 'Bill');
+      const safeFilename = billNum.replace(/[^a-zA-Z0-9_\-]/g, '_') + '.pdf';
+
+      if (window.html2pdf) {
+        const opt = {
+          margin: [8, 8, 8, 8],
+          filename: safeFilename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        try {
+          await html2pdf().set(opt).from(receiptEl).save();
+          return;
+        } catch (err) {
+          console.warn('html2pdf generation error, falling back to print dialog:', err);
+        }
+      }
+
+      // Fallback: Trigger native browser print dialog with "Save as PDF"
+      printReceipt();
+    }
+
     function printReceipt() {
+      const modal = document.getElementById('receiptModal');
+      if (modal && !modal.classList.contains('active')) {
+        modal.classList.add('active');
+      }
       window.print();
+    }
+
+    let currentCustomerLookupMode = 'phone'; // 'id', 'phone', or 'name'
+    let allCachedCustomers = [];
+
+    function setCustomerLookupMode(mode) {
+      currentCustomerLookupMode = mode;
+      const btnId = document.getElementById('optCustomerId');
+      const btnPhone = document.getElementById('optCustomerPhone');
+      const btnName = document.getElementById('optCustomerName');
+      const input = document.getElementById('customerLookupInput');
+      const label = document.getElementById('lookupModeLabel');
+
+      [btnId, btnPhone, btnName].forEach(b => {
+        if (b) {
+          b.style.background = 'white';
+          b.style.color = '#374151';
+          b.style.fontWeight = '600';
+        }
+      });
+
+      if (mode === 'id') {
+        if (btnId) { btnId.style.background = 'var(--primary)'; btnId.style.color = 'white'; btnId.style.fontWeight = '700'; }
+        if (input) { input.placeholder = 'Enter Customer ID (e.g. 1, 101)...'; input.type = 'number'; }
+        if (label) label.textContent = 'Active: Customer ID';
+      } else if (mode === 'name') {
+        if (btnName) { btnName.style.background = 'var(--primary)'; btnName.style.color = 'white'; btnName.style.fontWeight = '700'; }
+        if (input) { input.placeholder = 'Enter Customer Name (e.g. Rahul)...'; input.type = 'text'; }
+        if (label) label.textContent = 'Active: Customer Name';
+      } else {
+        if (btnPhone) { btnPhone.style.background = 'var(--primary)'; btnPhone.style.color = 'white'; btnPhone.style.fontWeight = '700'; }
+        if (input) { input.placeholder = 'Enter Mobile Number (e.g. 9876543210)...'; input.type = 'tel'; }
+        if (label) label.textContent = 'Active: Mobile Number';
+      }
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      updateCustomerDatalist();
+    }
+
+    function updateCustomerDatalist() {
+      const datalist = document.getElementById('customerDatalist');
+      if (!datalist || !allCachedCustomers) return;
+
+      datalist.innerHTML = allCachedCustomers.map(c => {
+        if (currentCustomerLookupMode === 'id') {
+          return `<option value="${c.customerId}">#${c.customerId} - ${escapeHtml(c.name)} (${escapeHtml(c.phone || 'No phone')})</option>`;
+        } else if (currentCustomerLookupMode === 'name') {
+          return `<option value="${escapeHtml(c.name)}">#${c.customerId} - ${escapeHtml(c.name)} (${escapeHtml(c.phone || 'No phone')})</option>`;
+        } else {
+          return `<option value="${escapeHtml(c.phone || '')}">#${c.customerId} - ${escapeHtml(c.name)} (${escapeHtml(c.phone || 'No phone')})</option>`;
+        }
+      }).join('');
+    }
+
+    function onCustomerLookupInput(val) {
+      if (!val || !allCachedCustomers || allCachedCustomers.length === 0) return;
+      const q = val.trim().toLowerCase();
+      const matched = allCachedCustomers.find(c => {
+        if (currentCustomerLookupMode === 'id') return String(c.customerId) === q;
+        if (currentCustomerLookupMode === 'name') return (c.name || '').toLowerCase() === q;
+        return (c.phone || '').replace(/\s+/g, '') === q.replace(/\s+/g, '');
+      });
+      if (matched) {
+        linkCustomerToPos(matched);
+      }
+    }
+
+    function linkCustomerToPos(c, purchaseCount) {
+      if (!c) return;
+      document.getElementById('selectedCustomerId').value = c.customerId ? '#' + c.customerId : '';
+      document.getElementById('customerName').value = c.name || 'Walk-in Customer';
+      document.getElementById('customerPhone').value = c.phone || '';
+
+      const badge = document.getElementById('customerBadge');
+      if (badge) {
+        badge.style.display = 'block';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        badge.style.borderColor = '#bbf7d0';
+        const purchasesText = purchaseCount !== undefined ? ` | Purchases: <strong>${purchaseCount}</strong>` : '';
+        badge.innerHTML = `✅ Linked: <strong>${escapeHtml(c.name)}</strong> (Customer ID #${c.customerId}) | 📞 ${escapeHtml(c.phone || 'N/A')}${purchasesText}`;
+      }
+
+      const select = document.getElementById('customerSelect');
+      if (select && c.customerId) select.value = c.customerId;
+    }
+
+    function resetToWalkInCustomer() {
+      document.getElementById('selectedCustomerId').value = '';
+      document.getElementById('customerName').value = 'Walk-in Customer';
+      document.getElementById('customerPhone').value = '';
+      const input = document.getElementById('customerLookupInput');
+      if (input) input.value = '';
+      const select = document.getElementById('customerSelect');
+      if (select) select.value = '';
+      const badge = document.getElementById('customerBadge');
+      if (badge) badge.style.display = 'none';
     }
 
     async function loadCustomerOptions(selectedPhone) {
       try {
         const customers = await apiGet('/customers');
+        allCachedCustomers = customers || [];
         const select = document.getElementById('customerSelect');
         if (select && customers) {
           select.innerHTML = '<option value="" data-id="" data-name="Walk-in Customer" data-phone="">-- Pick Saved Customer --</option>' +
@@ -683,6 +1236,7 @@
             }
           }
         }
+        updateCustomerDatalist();
       } catch (e) {}
     }
 
@@ -692,21 +1246,15 @@
         const id = selectedOption.getAttribute('data-id');
         const name = selectedOption.getAttribute('data-name');
         const phone = selectedOption.getAttribute('data-phone');
-        document.getElementById('selectedCustomerId').value = id || '';
-        if (name) document.getElementById('customerName').value = name;
-        if (phone !== null) document.getElementById('customerPhone').value = phone || '';
-
-        const badge = document.getElementById('customerBadge');
         if (id) {
-          badge.style.display = 'block';
-          badge.innerHTML = `✅ Linked to: <strong>${escapeHtml(name)}</strong> (Customer ID #${id}) | 📞 ${escapeHtml(phone)}`;
+          linkCustomerToPos({ customerId: id, name: name, phone: phone });
         } else {
-          badge.style.display = 'none';
+          resetToWalkInCustomer();
         }
       }
     }
 
-    async function lookupCustomerByIdOrPhone() {
+    async function lookupCustomer() {
       const query = document.getElementById('customerLookupInput').value.trim();
       const badge = document.getElementById('customerBadge');
       if (!query) {
@@ -714,7 +1262,8 @@
         badge.style.background = '#fef2f2';
         badge.style.color = '#991b1b';
         badge.style.borderColor = '#fecaca';
-        badge.textContent = 'Please enter Customer ID or Mobile Number to search.';
+        const typeName = currentCustomerLookupMode === 'id' ? 'Customer ID' : currentCustomerLookupMode === 'name' ? 'Customer Name' : 'Mobile Number';
+        badge.textContent = `Please enter ${typeName} to search.`;
         return;
       }
 
@@ -724,37 +1273,47 @@
       badge.style.borderColor = '#bfdbfe';
       badge.textContent = 'Searching customer...';
 
+      // Fast check in cached customers
+      const localMatch = allCachedCustomers.find(c => {
+        if (currentCustomerLookupMode === 'id') return String(c.customerId) === query;
+        if (currentCustomerLookupMode === 'name') return (c.name || '').toLowerCase() === query.toLowerCase();
+        return (c.phone || '').replace(/\s+/g, '') === query.replace(/\s+/g, '');
+      });
+
       try {
-        const res = await fetch(`/api/customers/lookup?query=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/customers/lookup?query=${encodeURIComponent(query)}&type=${currentCustomerLookupMode}`);
         if (res.ok) {
           const data = await res.json();
-          const c = data.customer;
-          const purchaseCount = data.totalPurchases || 0;
-          document.getElementById('selectedCustomerId').value = c.customerId;
-          document.getElementById('customerName').value = c.name;
-          document.getElementById('customerPhone').value = c.phone;
-
-          badge.style.background = '#dcfce7';
-          badge.style.color = '#166534';
-          badge.style.borderColor = '#bbf7d0';
-          badge.innerHTML = `✅ <strong>${escapeHtml(c.name)}</strong> (Customer ID #${c.customerId}) | 📞 ${escapeHtml(c.phone)} | Previous Purchases: <strong>${purchaseCount}</strong>`;
-
-          // Also match select box if possible
-          const select = document.getElementById('customerSelect');
-          if (select) select.value = c.customerId;
+          linkCustomerToPos(data.customer, data.totalPurchases || 0);
+        } else if (localMatch) {
+          linkCustomerToPos(localMatch);
         } else {
           document.getElementById('selectedCustomerId').value = '';
+          if (currentCustomerLookupMode === 'name') {
+            document.getElementById('customerName').value = query;
+          } else if (currentCustomerLookupMode === 'phone') {
+            document.getElementById('customerPhone').value = query;
+          }
           badge.style.background = '#fffbeb';
           badge.style.color = '#92400e';
           badge.style.borderColor = '#fde68a';
-          badge.innerHTML = `ℹ️ No existing customer for "${escapeHtml(query)}". If you enter their name & mobile, purchase will auto-register them!`;
+          badge.innerHTML = `ℹ️ No saved customer found for "${escapeHtml(query)}". If entered, new details will auto-register on checkout!`;
         }
       } catch (err) {
-        badge.style.background = '#fef2f2';
-        badge.style.color = '#991b1b';
-        badge.style.borderColor = '#fecaca';
-        badge.textContent = 'Lookup error: ' + err.message;
+        if (localMatch) {
+          linkCustomerToPos(localMatch);
+        } else {
+          badge.style.background = '#fef2f2';
+          badge.style.color = '#991b1b';
+          badge.style.borderColor = '#fecaca';
+          badge.textContent = 'Lookup error: ' + err.message;
+        }
       }
+    }
+
+    // Alias for backwards compatibility
+    function lookupCustomerByIdOrPhone() {
+      lookupCustomer();
     }
 
     function openQuickCustomerModal() {

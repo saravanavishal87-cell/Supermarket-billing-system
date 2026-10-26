@@ -38,8 +38,8 @@ public class Bill {
 
     public void recalculate() {
         subtotal = items.stream().mapToDouble(BillItem::getLineTotal).sum();
-        double taxable = subtotal - discount;
-        taxAmount = taxable * 0.05;
+        double taxable = Math.max(0, subtotal - discount);
+        taxAmount = (taxable > 1000.0) ? (taxable * 0.05) : 0.0;
         grandTotal = taxable + taxAmount;
     }
 
@@ -73,6 +73,7 @@ public class Bill {
     public double getDiscount() { return discount; }
     public void setDiscount(double discount) {
         this.discount = discount;
+        recalculate();
     }
 
     public double getTaxAmount() { return taxAmount; }

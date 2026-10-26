@@ -18,15 +18,35 @@ public class CustomerController {
     private final com.supermarket.dao.BillDAO billDAO = new com.supermarket.dao.BillDAO();
 
     @GetMapping("/lookup")
-    public ResponseEntity<?> lookupCustomer(@RequestParam("query") String query) {
+    public ResponseEntity<?> lookupCustomer(
+            @RequestParam("query") String query,
+            @RequestParam(value = "type", required = false) String type) {
         if (query == null || query.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Search query (Customer ID or Mobile) is required"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Search query is required"));
         }
+        String trimmed = query.trim();
         try {
-            Customer customer = customerDAO.getByIdOrPhone(query.trim());
+            Customer customer = null;
+            if ("id".equalsIgnoreCase(type) || "customerId".equalsIgnoreCase(type)) {
+                try {
+                    int id = Integer.parseInt(trimmed);
+                    customer = customerDAO.getById(id);
+                } catch (NumberFormatException ignored) {}
+            } else if ("phone".equalsIgnoreCase(type) || "mobile".equalsIgnoreCase(type)) {
+                customer = customerDAO.getByPhone(trimmed);
+            } else if ("name".equalsIgnoreCase(type)) {
+                customer = customerDAO.getByName(trimmed);
+            } else {
+                // Auto fallback across ID, Phone, or Name
+                customer = customerDAO.getByIdOrPhone(trimmed);
+                if (customer == null) {
+                    customer = customerDAO.getByName(trimmed);
+                }
+            }
+
             if (customer == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "No customer found with ID or Mobile: " + query.trim()));
+                        .body(Map.of("error", "No customer found for: " + trimmed));
             }
             List<com.supermarket.model.Bill> purchases = billDAO.getBillsByCustomerRef(customer.getCustomerId(), customer.getPhone());
             return ResponseEntity.ok(Map.of(

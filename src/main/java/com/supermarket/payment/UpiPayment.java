@@ -11,11 +11,11 @@ public class UpiPayment extends AbstractPayment {
     private String upiTxnRef;
 
     public UpiPayment() {
-        this.upiId = "supermarket@upi";
+        this.upiId = "saravanavishal06@oksbi";
     }
 
     public UpiPayment(String upiId, String upiTxnRef) {
-        this.upiId = (upiId != null && !upiId.isBlank()) ? upiId : "supermarket@upi";
+        this.upiId = (upiId != null && !upiId.isBlank()) ? upiId : "saravanavishal06@oksbi";
         this.upiTxnRef = upiTxnRef;
     }
 

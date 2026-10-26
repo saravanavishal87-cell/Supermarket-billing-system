@@ -17,7 +17,7 @@ CREATE TABLE products (
     product_name  VARCHAR(150) NOT NULL,
     category_id   INT,
     price         DECIMAL(10, 2) NOT NULL,
-    stock_qty     INT NOT NULL DEFAULT 0,
+    stock_qty     DECIMAL(10, 3) NOT NULL DEFAULT 0,
     unit          VARCHAR(20) DEFAULT 'pcs',
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(category_id)
@@ -55,7 +55,7 @@ CREATE TABLE bill_items (
     item_id     INT AUTO_INCREMENT PRIMARY KEY,
     bill_id     INT NOT NULL,
     product_id  INT NOT NULL,
-    quantity    INT NOT NULL,
+    quantity    DECIMAL(10, 3) NOT NULL,
     unit_price  DECIMAL(10, 2) NOT NULL,
     line_total  DECIMAL(10, 2) NOT NULL,
     FOREIGN KEY (bill_id) REFERENCES bills(bill_id),
@@ -80,12 +80,12 @@ CREATE TABLE shop_details (
     phone              VARCHAR(30) DEFAULT '+91 98765 43210',
     email              VARCHAR(100) DEFAULT 'contact@rahulstores.com',
     gstin              VARCHAR(50) DEFAULT '33AAAAA0000A1Z5',
-    image_path         VARCHAR(255) DEFAULT '/images/shop_banner.jpg',
+    image_path         VARCHAR(255) DEFAULT '/images/logo.png',
     auto_delete_months INT DEFAULT 3
 );
 
 INSERT INTO shop_details (id, shop_name, address, phone, email, gstin, image_path, auto_delete_months)
-VALUES (1, 'Rahul Stores Supermarket', '123 Main Bazaar Road, Market City', '+91 98765 43210', 'contact@rahulstores.com', '33AAAAA0000A1Z5', '/images/shop_banner.jpg', 3)
+VALUES (1, 'Rahul Stores Supermarket', '123 Main Bazaar Road, Market City', '+91 98765 43210', 'contact@rahulstores.com', '33AAAAA0000A1Z5', '/images/logo.png', 3)
 ON DUPLICATE KEY UPDATE shop_name=VALUES(shop_name);
 
 INSERT INTO customers (name, phone, email, address) VALUES
@@ -94,7 +94,7 @@ INSERT INTO customers (name, phone, email, address) VALUES
 
 -- Sample data
 INSERT INTO categories (category_name) VALUES
-('Groceries'), ('Beverages'), ('Snacks'), ('Dairy'), ('Personal Care');
+('Groceries'), ('Beverages'), ('Snacks'), ('Dairy'), ('Personal Care'), ('Vegetables'), ('Fruits');
 
 INSERT INTO users (username, password, full_name, role) VALUES
 ('admin',   'admin123',   'Store Admin',  'ADMIN'),

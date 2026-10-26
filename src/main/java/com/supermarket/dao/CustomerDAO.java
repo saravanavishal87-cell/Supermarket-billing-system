@@ -74,6 +74,28 @@ public class CustomerDAO {
         return getByPhone(trimmed);
     }
 
+    public Customer getByName(String name) throws SQLException {
+        if (name == null || name.trim().isEmpty()) return null;
+        String trimmed = name.trim();
+        String sql = "SELECT customer_id, name, phone, email, address, created_at FROM customers WHERE LOWER(name) = ? LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, trimmed.toLowerCase());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        }
+        String likeSql = "SELECT customer_id, name, phone, email, address, created_at FROM customers WHERE LOWER(name) LIKE ? LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(likeSql)) {
+            ps.setString(1, "%" + trimmed.toLowerCase() + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        }
+        return null;
+    }
+
     public boolean addCustomer(Customer c) throws SQLException {
         boolean hasCustomId = c.getCustomerId() > 0;
         String sql = hasCustomId

@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Store Intelligence - Rahul Stores POS</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    :root {
+      --ai-purple: #7c3aed;
+      --ai-purple-dark: #6d28d9;
+      --ai-purple-light: #f5f3ff;
+      --ai-indigo: #4f46e5;
+    }
+
+    .ai-hero-banner {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 40%, #9333ea 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .ai-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .ai-kpi-card {
+      background: white;
+      border-radius: 10px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .ai-kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+    }
+    .ai-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+    }
+    .ai-kpi-card.red::before { background: #ef4444; }
+    .ai-kpi-card.orange::before { background: #f97316; }
+    .ai-kpi-card.purple::before { background: #8b5cf6; }
+    .ai-kpi-card.blue::before { background: #0ea5e9; }
+    .ai-kpi-card.green::before { background: #10b981; }
+
+    .ai-kpi-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .ai-kpi-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .ai-kpi-sub {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Tabs */
+    .ai-nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 2px;
+      flex-wrap: wrap;
+    }
+    .ai-tab-btn {
+      background: none;
+      border: none;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ai-tab-btn:hover {
+      color: var(--ai-purple);
+      background: var(--ai-purple-light);
+    }
+    .ai-tab-btn.active {
+      color: var(--ai-purple);
+      border-bottom: 3px solid var(--ai-purple);
+      background: var(--ai-purple-light);
+    }
+
+    /* Filter Pills */
+    .filter-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .pill-btn {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pill-btn:hover {
+      background: #f1f5f9;
+    }
+    .pill-btn.active {
+      background: var(--ai-purple);
+      color: white;
+      border-color: var(--ai-purple);
+    }
+
+    /* AI Copilot Chat styling */
+    .chat-container {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 520px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .chat-header {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: #f8fafc;
+    }
+    .chat-msg {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .chat-msg.user {
+      align-self: flex-end;
+      background: var(--ai-purple);
+      color: white;
+      border-bottom-right-radius: 2px;
+    }
+    .chat-msg.bot {
+      align-self: flex-start;
+      background: white;
+      color: #1e293b;
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 2px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+    .chat-chips {
+      padding: 10px 16px;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .chip {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .chip:hover {
+      background: var(--ai-purple-light);
+      border-color: var(--ai-purple);
+      color: var(--ai-purple);
+    }
+    .chat-input-bar {
+      padding: 12px 16px;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+    .chat-input-bar input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .chat-input-bar input:focus {
+      border-color: var(--ai-purple);
+    }
+
+    /* Print styling */
+    @media print {
+      body * { visibility: hidden; }
+      #printableReportArea, #printableReportArea * { visibility: visible; }
+      #printableReportArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="container" style="max-width: 1300px; margin: 20px auto; padding: 0 16px;">
+    
+    <!-- HERO BANNER -->
+    <div class="ai-hero-banner">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <span style="background: rgba(255,255,255,0.25); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+            ✨ Rahul AI Core 2.0
+          </span>
+          <span style="font-size:0.85rem; opacity:0.9;">Predictive Analytics & Food Safety Engine</span>
+        </div>
+        <h1 style="margin: 0 0 6px 0; font-size: 1.6rem; font-weight: 800;">Smart Expiry Radar & Product Demand Intelligence</h1>
+        <p style="margin: 0; font-size: 0.92rem; opacity: 0.95; max-width: 720px; line-height: 1.4;">
+          Real-time product shelf life monitoring, automated food waste clearance pricing, consumption velocity forecasts, and AI reorder recommendations.
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn" style="background: white; color: #6d28d9; font-weight: 700; padding: 10px 18px; border-radius: 8px;" onclick="refreshAllAiData()">
+          🔄 Refresh AI Models
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI SUMMARY CARDS -->
+    <div class="ai-kpi-grid">
+      <div class="ai-kpi-card red">
+        <div class="ai-kpi-label">Expired Products</div>
+        <div class="ai-kpi-val" id="kpiExpiredCount">0</div>
+        <div class="ai-kpi-sub" id="kpiExpiredSub">Immediate shelf withdrawal required</div>
+      </div>
+      <div class="ai-kpi-card orange">
+        <div class="ai-kpi-label">Critical Expiry (&lt; 7 Days)</div>
+        <div class="ai-kpi-val" id="kpiCriticalCount">0</div>
+        <div class="ai-kpi-sub">Clearance discount opportunity</div>
+      </div>
+      <div class="ai-kpi-card purple">
+        <div class="ai-kpi-label">Potential Waste Value</div>
+        <div class="ai-kpi-val" id="kpiWasteRisk">₹0.00</div>
+        <div class="ai-kpi-sub" id="kpiSalvageSub">₹0.00 recoverable via AI markdown</div>
+      </div>
+      <div class="ai-kpi-card blue">
+        <div class="ai-kpi-label">Stockout Risks (&lt; 4 Days)</div>
+        <div class="ai-kpi-val" id="kpiStockoutCount">0</div>
+        <div class="ai-kpi-sub">Urgent restocking orders needed</div>
+      </div>
+      <div class="ai-kpi-card green">
+        <div class="ai-kpi-label">High-Velocity Items</div>
+        <div class="ai-kpi-val" id="kpiHighDemandCount">0</div>
+        <div class="ai-kpi-sub">Fastest turnover products</div>
+      </div>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <div class="ai-nav-tabs no-print">
+      <button class="ai-tab-btn active" id="tabExpiryBtn" onclick="switchAiTab('expiry')">
+        🚨 Expiry & Clearance Radar
+      </button>
+      <button class="ai-tab-btn" id="tabDemandBtn" onclick="switchAiTab('demand')">
+        📈 Demand Forecasting & Restock
+      </button>
+      <button class="ai-tab-btn" id="tabCopilotBtn" onclick="switchAiTab('copilot')">
+        🤖 AI Store Copilot Chat
+      </button>
+      <button class="ai-tab-btn" id="tabReportBtn" onclick="switchAiTab('report')">
+        📑 Executive Audit Report
+      </button>
+    </div>
+
+    <!-- TAB 1: EXPIRY RADAR & CLEARANCE MARKDOWN -->
+    <div id="sectionExpiry" class="ai-tab-content">
+      <div class="card" style="margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="margin:0; font-size:1.15rem; color:#1e293b;">Food Waste Prevention & Clearance Markdown Engine</h3>
+            <span style="font-size:0.8rem; color:var(--muted);">
+              AI dynamically computes clearance markdowns (15% to 50%) based on remaining shelf life to salvage revenue.
+            </span>
+          </div>
+
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="text" id="expirySearchInput" placeholder="🔍 Filter products..." oninput="filterExpiryTable()"
+                   style="padding:6px 12px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; width:200px;">
+          </div>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="filter-pills">
+          <button class="pill-btn active" id="pillExpAll" onclick="setExpiryFilter('ALL')">All Monitored Items</button>
+          <button class="pill-btn" id="pillExpExpired" onclick="setExpiryFilter('EXPIRED')">🔴 Expired</button>
+          <button class="pill-btn" id="pillExpCritical" onclick="setExpiryFilter('CRITICAL')">🟠 Critical (&lt; 7 Days)</button>
+          <button class="pill-btn" id="pillExpWarning" onclick="setExpiryFilter('WARNING')">🟡 Expiring Soon (&lt; 30 Days)</button>
+          <button class="pill-btn" id="pillExpHealthy" onclick="setExpiryFilter('HEALTHY')">🟢 Healthy Fresh (&gt; 30 Days)</button>
+        </div>
+
+        <div style="overflow-x:auto; border:1px solid var(--border); border-radius:8px;">
+          <table class="data-table" style="width:100%; border-collapse:collapse;">
+            <thead style="background:#f8fafc;">
+              <tr>
+                <th style="padding:10px 12px; text-align:left;">Product</th>
+                <th style="padding:10px 12px; text-align:left;">Category</th>
+                <th style="padding:10px 12px; text-align:left;">Batch</th>
+                <th style="padding:10px 12px; text-align:center;">Expiry Date</th>
+                <th style="padding:10px 12px; text-align:center;">Days Left</th>
+                <th style="padding:10px 12px; text-align:right;">Stock & Risk Value</th>
+                <th style="padding:10px 12px; text-align:center;">AI Suggested Markdown</th>
+                <th style="padding:10px 12px; text-align:center;">Clearance Price</th>
+                <th style="padding:10px 12px; text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="expiryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: DEMAND FORECASTING & RESTOCK RUNWAY -->
+    <div id="sectionDemand" class="ai-tab-content" style="display:none;">
+      <div class="card" style="margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="margin:0; font-size:1.15rem; color:#1e293b;">Product Demand Forecasting & Safety Stock Runway</h3>
+            <span style="font-size:0.8rem; color:var(--muted);">
+              Analyzes consumption velocity to predict exact days until stockout and generates automated replenishment quantities.
+            </span>
+          </div>
+
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-secondary" style="padding:6px 12px; font-size:0.8rem;" onclick="printPurchaseOrder()">
+              🖨️ Export Purchase Order
+            </button>
+            <input type="text" id="demandSearchInput" placeholder="🔍 Filter products..." oninput="filterDemandTable()"
+                   style="padding:6px 12px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; width:200px;">
+          </div>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="filter-pills">
+          <button class="pill-btn active" id="pillDemAll" onclick="setDemandFilter('ALL')">All Products</button>
+          <button class="pill-btn" id="pillDemStockout" onclick="setDemandFilter('STOCKOUT_RISK')">⚠️ Stockout Imminent (&lt; 4d)</button>
+          <button class="pill-btn" id="pillDemHigh" onclick="setDemandFilter('HIGH_DEMAND')">🔥 High Velocity Demand</button>
+          <button class="pill-btn" id="pillDemModerate" onclick="setDemandFilter('MODERATE_DEMAND')">⚖️ Moderate Demand</button>
+          <button class="pill-btn" id="pillDemLow" onclick="setDemandFilter('LOW_DEMAND')">💤 Slow-Moving Items</button>
+        </div>
+
+        <div style="overflow-x:auto; border:1px solid var(--border); border-radius:8px;">
+          <table class="data-table" style="width:100%; border-collapse:collapse;">
+            <thead style="background:#f8fafc;">
+              <tr>
+                <th style="padding:10px 12px; text-align:left;">Product</th>
+                <th style="padding:10px 12px; text-align:left;">Category</th>
+                <th style="padding:10px 12px; text-align:right;">Daily Velocity</th>
+                <th style="padding:10px 12px; text-align:right;">Current Stock</th>
+                <th style="padding:10px 12px; text-align:center;">Stock Runway</th>
+                <th style="padding:10px 12px; text-align:center;">Demand Tier</th>
+                <th style="padding:10px 12px; text-align:right;">AI Suggested Order</th>
+                <th style="padding:10px 12px; text-align:left;">AI Strategy & Insights</th>
+              </tr>
+            </thead>
+            <tbody id="demandTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: AI STORE COPILOT CHAT -->
+    <div id="sectionCopilot" class="ai-tab-content" style="display:none;">
+      <div class="chat-container">
+        <div class="chat-header">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="background:rgba(255,255,255,0.2); width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              🤖
+            </div>
+            <div>
+              <div style="font-weight:700; font-size:0.95rem;">Rahul AI Store Inventory Copilot</div>
+              <div style="font-size:0.75rem; opacity:0.85;">Trained on real-time supermarket sales & freshness telemetry</div>
+            </div>
+          </div>
+          <span style="background:#10b981; color:white; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:10px;">ONLINE</span>
+        </div>
+
+        <div class="chat-messages" id="chatMessageArea">
+          <div class="chat-msg bot">
+            <strong>Rahul AI Copilot:</strong><br>
+            Hello! I am your AI Inventory & Demand Copilot. I analyze product expiry dates, evaluate daily sales velocity, and predict stockout risks.
+            <br><br>
+            Click one of the suggested prompts below or ask me any question!
+          </div>
+        </div>
+
+        <div class="chat-chips">
+          <div class="chip" onclick="askCopilot('What products are expiring this week?')">⏰ Products expiring this week?</div>
+          <div class="chip" onclick="askCopilot('Which items are running out of stock?')">⚠️ Stockout risk items?</div>
+          <div class="chip" onclick="askCopilot('Show me the fastest selling products')">🔥 Fastest moving products?</div>
+          <div class="chip" onclick="askCopilot('How much food waste can we save by clearance discounts?')">💰 Waste salvage estimate?</div>
+          <div class="chip" onclick="askCopilot('Give me restock recommendations')">📦 Restock purchase orders?</div>
+        </div>
+
+        <div class="chat-input-bar">
+          <input type="text" id="copilotQueryInput" placeholder="Ask AI: e.g. What should I order today? Which items to discount?" 
+                 onkeydown="if(event.key==='Enter') sendUserQuery()">
+          <button class="btn" style="background:var(--ai-purple); color:white; font-weight:700; padding:8px 18px; border-radius:8px;" onclick="sendUserQuery()">
+            Send ➔
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: EXECUTIVE AUDIT REPORT (PRINTABLE) -->
+    <div id="sectionReport" class="ai-tab-content" style="display:none;">
+      <div class="card" id="printableReportArea" style="padding:30px; background:white;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e2e8f0; padding-bottom:16px; margin-bottom:20px;">
+          <div>
+            <h2 style="margin:0 0 4px 0; color:#1e293b;">RAHUL STORES - AI INVENTORY AUDIT REPORT</h2>
+            <div style="font-size:0.85rem; color:var(--muted);">Automated Stock Freshness & Demand Velocity Forecast</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700; font-size:0.9rem;" id="reportAuditDate">Date: -</div>
+            <button class="btn btn-primary no-print" onclick="window.print()" style="margin-top:6px; padding:6px 14px; font-size:0.82rem;">🖨️ Print Audit Report</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:24px; text-align:center;">
+          <div style="border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; font-weight:700;">Monitored SKUs</div>
+            <div style="font-size:1.4rem; font-weight:800;" id="repTotalSkus">-</div>
+          </div>
+          <div style="border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; font-weight:700;">Expired / Urgent</div>
+            <div style="font-size:1.4rem; font-weight:800; color:#dc2626;" id="repUrgentExp">-</div>
+          </div>
+          <div style="border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; font-weight:700;">Waste At Risk</div>
+            <div style="font-size:1.4rem; font-weight:800; color:#b45309;" id="repWasteVal">-</div>
+          </div>
+          <div style="border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; font-weight:700;">Stockouts Imminent</div>
+            <div style="font-size:1.4rem; font-weight:800; color:#4f46e5;" id="repStockouts">-</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:1rem; color:#334155; margin-bottom:10px;">1. AI Freshness & Clearance Actions Required</h3>
+        <table class="data-table" style="width:100%; border-collapse:collapse; margin-bottom:24px;">
+          <thead>
+            <tr style="background:#f8fafc; font-size:0.8rem;">
+              <th style="padding:8px; text-align:left;">Product Name</th>
+              <th style="padding:8px; text-align:center;">Expiry Date</th>
+              <th style="padding:8px; text-align:center;">Status</th>
+              <th style="padding:8px; text-align:right;">Stock Qty</th>
+              <th style="padding:8px; text-align:center;">AI Recommended Clearance Markdown</th>
+            </tr>
+          </thead>
+          <tbody id="repExpiryTable" style="font-size:0.85rem;"></tbody>
+        </table>
+
+        <h3 style="font-size:1rem; color:#334155; margin-bottom:10px;">2. AI Replenishment & Stockout Prevention List</h3>
+        <table class="data-table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f8fafc; font-size:0.8rem;">
+              <th style="padding:8px; text-align:left;">Product Name</th>
+              <th style="padding:8px; text-align:right;">Sales Velocity</th>
+              <th style="padding:8px; text-align:right;">Current Stock</th>
+              <th style="padding:8px; text-align:center;">Days Left</th>
+              <th style="padding:8px; text-align:right;">AI Suggested Order Qty</th>
+            </tr>
+          </thead>
+          <tbody id="repDemandTable" style="font-size:0.85rem;"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/api.js?v=2"></script>
+  <script>
+    const user = requireAuth();
+    document.getElementById('header').innerHTML = renderHeader('AI Intelligence', 'Smart Expiry & Demand Analytics');
+
+    let expiryData = null;
+    let demandData = null;
+    let currentExpFilter = 'ALL';
+    let currentDemFilter = 'ALL';
+
+    function switchAiTab(tab) {
+      document.querySelectorAll('.ai-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.ai-tab-content').forEach(c => c.style.display = 'none');
+
+      if (tab === 'expiry') {
+        document.getElementById('tabExpiryBtn').classList.add('active');
+        document.getElementById('sectionExpiry').style.display = 'block';
+      } else if (tab === 'demand') {
+        document.getElementById('tabDemandBtn').classList.add('active');
+        document.getElementById('sectionDemand').style.display = 'block';
+      } else if (tab === 'copilot') {
+        document.getElementById('tabCopilotBtn').classList.add('active');
+        document.getElementById('sectionCopilot').style.display = 'block';
+        setTimeout(() => document.getElementById('copilotQueryInput').focus(), 100);
+      } else if (tab === 'report') {
+        document.getElementById('tabReportBtn').classList.add('active');
+        document.getElementById('sectionReport').style.display = 'block';
+        renderAuditReport();
+      }
+    }
+
+    async function refreshAllAiData() {
+      try {
+        const [exp, dem] = await Promise.all([
+          apiGet('/ai/expiry-report'),
+          apiGet('/ai/demand-forecast')
+        ]);
+        expiryData = exp;
+        demandData = dem;
+
+        // Populate Top KPIs
+        document.getElementById('kpiExpiredCount').textContent = exp.expiredCount;
+        document.getElementById('kpiCriticalCount').textContent = exp.criticalCount;
+        document.getElementById('kpiWasteRisk').textContent = formatCurrency(exp.totalWasteRiskValue);
+        document.getElementById('kpiSalvageSub').textContent = `₹${exp.totalSalvageableValue.toFixed(2)} recoverable via AI markdown`;
+        document.getElementById('kpiStockoutCount').textContent = dem.stockoutRiskCount;
+        document.getElementById('kpiHighDemandCount').textContent = dem.highDemandCount;
+
+        renderExpiryTable();
+        renderDemandTable();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load AI Intelligence telemetry: ' + err.message);
+      }
+    }
+
+    // --- EXPIRY TABLE ---
+    function setExpiryFilter(filter) {
+      currentExpFilter = filter;
+      document.querySelectorAll('.filter-pills button[id^="pillExp"]').forEach(b => b.classList.remove('active'));
+      if (filter === 'ALL') document.getElementById('pillExpAll').classList.add('active');
+      if (filter === 'EXPIRED') document.getElementById('pillExpExpired').classList.add('active');
+      if (filter === 'CRITICAL') document.getElementById('pillExpCritical').classList.add('active');
+      if (filter === 'WARNING') document.getElementById('pillExpWarning').classList.add('active');
+      if (filter === 'HEALTHY') document.getElementById('pillExpHealthy').classList.add('active');
+      renderExpiryTable();
+    }
+
+    function filterExpiryTable() {
+      renderExpiryTable();
+    }
+
+    function renderExpiryTable() {
+      if (!expiryData || !expiryData.items) return;
+      const tbody = document.getElementById('expiryTableBody');
+      const search = (document.getElementById('expirySearchInput').value || '').toLowerCase().trim();
+
+      let list = expiryData.items.filter(item => {
+        if (currentExpFilter !== 'ALL' && item.status !== currentExpFilter) return false;
+        if (search && !item.productName.toLowerCase().includes(search) && !(item.categoryName || '').toLowerCase().includes(search)) return false;
+        return true;
+      });
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--muted);">No products match filter criteria.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(item => {
+        let badgeStyle = '';
+        if (item.status === 'EXPIRED') badgeStyle = 'background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;';
+        else if (item.status === 'CRITICAL') badgeStyle = 'background:#ffedd5; color:#c2410c; border:1px solid #fdba74;';
+        else if (item.status === 'WARNING') badgeStyle = 'background:#fef9c3; color:#854d0e; border:1px solid #fde047;';
+        else badgeStyle = 'background:#dcfce7; color:#15803d; border:1px solid #86efac;';
+
+        let actionBtn = '';
+        if (item.status === 'EXPIRED') {
+          actionBtn = `<span style="color:#dc2626; font-size:0.75rem; font-weight:700;">⛔ Remove from Shelf</span>`;
+        } else if (item.aiRecommendedDiscount > 0) {
+          actionBtn = `<button class="btn btn-primary" style="padding:4px 10px; font-size:0.75rem; background:#7c3aed; white-space:nowrap;" onclick="applyDiscount(${item.productId}, ${item.aiRecommendedDiscount})">⚡ Apply ${item.aiRecommendedDiscount}% Off</button>`;
+        } else {
+          actionBtn = `<span style="color:#059669; font-size:0.75rem; font-weight:600;">✓ Normal Pricing</span>`;
+        }
+
+        return `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 12px; font-weight:700; color:var(--primary-dark);">
+            ${escapeHtml(item.productName)}
+            <div style="font-size:0.72rem; color:var(--muted); font-weight:normal;">ID #${item.productId}</div>
+          </td>
+          <td style="padding:10px 12px; color:var(--muted);">${escapeHtml(item.categoryName || '-')}</td>
+          <td style="padding:10px 12px; font-size:0.78rem; color:#475569;">${escapeHtml(item.batchNo || 'BATCH-STD')}</td>
+          <td style="padding:10px 12px; text-align:center; font-weight:600;">${item.expiryDate}</td>
+          <td style="padding:10px 12px; text-align:center;">
+            <span style="padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; ${badgeStyle}">
+              ${escapeHtml(item.statusLabel)}
+            </span>
+          </td>
+          <td style="padding:10px 12px; text-align:right;">
+            <div><strong>${item.stockQty} ${escapeHtml(item.unit)}</strong></div>
+            <div style="font-size:0.75rem; color:#dc2626;">At Risk: ₹${item.wasteRiskValue.toFixed(2)}</div>
+          </td>
+          <td style="padding:10px 12px; text-align:center;">
+            ${item.aiRecommendedDiscount > 0 
+              ? `<span style="background:#ede9fe; color:#6d28d9; padding:3px 8px; border-radius:6px; font-size:0.8rem; font-weight:800;">${item.aiRecommendedDiscount}% OFF</span>` 
+              : `<span style="color:var(--muted); font-size:0.8rem;">0%</span>`}
+            <div style="font-size:0.7rem; color:var(--muted); margin-top:2px;">${item.status === 'CRITICAL' ? 'Flash Clearance' : (item.status === 'WARNING' ? 'Promotional' : 'None')}</div>
+          </td>
+          <td style="padding:10px 12px; text-align:center;">
+            ${item.aiRecommendedDiscount > 0
+              ? `<div><strong style="color:#059669;">₹${item.discountedPrice.toFixed(2)}</strong></div>
+                 <div style="font-size:0.72rem; text-decoration:line-through; color:var(--muted);">₹${item.price.toFixed(2)}</div>`
+              : `<strong>₹${item.price.toFixed(2)}</strong>`}
+          </td>
+          <td style="padding:10px 12px; text-align:center;">${actionBtn}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function applyDiscount(productId, discount) {
+      if (!confirm(`Apply ${discount}% AI clearance discount to Product #${productId}? This will immediately update the POS price.`)) return;
+      try {
+        const res = await apiPost('/ai/apply-discount', { productId, discount });
+        alert(res.message || 'Discount applied!');
+        refreshAllAiData();
+      } catch (err) {
+        alert('Failed to apply discount: ' + err.message);
+      }
+    }
+
+    // --- DEMAND TABLE ---
+    function setDemandFilter(filter) {
+      currentDemFilter = filter;
+      document.querySelectorAll('.filter-pills button[id^="pillDem"]').forEach(b => b.classList.remove('active'));
+      if (filter === 'ALL') document.getElementById('pillDemAll').classList.add('active');
+      if (filter === 'STOCKOUT_RISK') document.getElementById('pillDemStockout').classList.add('active');
+      if (filter === 'HIGH_DEMAND') document.getElementById('pillDemHigh').classList.add('active');
+      if (filter === 'MODERATE_DEMAND') document.getElementById('pillDemModerate').classList.add('active');
+      if (filter === 'LOW_DEMAND') document.getElementById('pillDemLow').classList.add('active');
+      renderDemandTable();
+    }
+
+    function filterDemandTable() {
+      renderDemandTable();
+    }
+
+    function renderDemandTable() {
+      if (!demandData || !demandData.items) return;
+      const tbody = document.getElementById('demandTableBody');
+      const search = (document.getElementById('demandSearchInput').value || '').toLowerCase().trim();
+
+      let list = demandData.items.filter(item => {
+        if (currentDemFilter !== 'ALL' && item.demandTier !== currentDemFilter) return false;
+        if (search && !item.productName.toLowerCase().includes(search) && !(item.categoryName || '').toLowerCase().includes(search)) return false;
+        return true;
+      });
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--muted);">No products match filter criteria.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(item => {
+        let tierBadge = '';
+        if (item.demandTier === 'STOCKOUT_RISK') {
+          tierBadge = '<span style="background:#fee2e2; color:#b91c1c; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; border:1px solid #fca5a5;">⚠️ Stockout Danger</span>';
+        } else if (item.demandTier === 'HIGH_DEMAND') {
+          tierBadge = '<span style="background:#ede9fe; color:#6d28d9; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; border:1px solid #ddd6fe;">🔥 High Demand</span>';
+        } else if (item.demandTier === 'MODERATE_DEMAND') {
+          tierBadge = '<span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; border:1px solid #bae6fd;">⚖️ Moderate</span>';
+        } else {
+          tierBadge = '<span style="background:#f1f5f9; color:#475569; padding:3px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;">💤 Slow Moving</span>';
+        }
+
+        let runwayColor = '#10b981';
+        if (item.estimatedDaysLeft <= 4) runwayColor = '#ef4444';
+        else if (item.estimatedDaysLeft <= 10) runwayColor = '#f59e0b';
+
+        return `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 12px; font-weight:700; color:var(--primary-dark);">
+            ${escapeHtml(item.productName)}
+            <div style="font-size:0.72rem; color:var(--muted); font-weight:normal;">ID #${item.productId}</div>
+          </td>
+          <td style="padding:10px 12px; color:var(--muted);">${escapeHtml(item.categoryName || '-')}</td>
+          <td style="padding:10px 12px; text-align:right;">
+            <strong>${item.dailyVelocity} ${escapeHtml(item.unit)}/day</strong>
+            <div style="font-size:0.72rem; color:var(--muted);">${item.unitsSold} sold / 30d</div>
+          </td>
+          <td style="padding:10px 12px; text-align:right; font-weight:700; ${item.stockQty <= 5 ? 'color:#dc2626;' : ''}">
+            ${item.stockQty} ${escapeHtml(item.unit)}
+          </td>
+          <td style="padding:10px 12px; text-align:center;">
+            <div style="font-weight:800; font-size:0.95rem; color:${runwayColor};">
+              ~${item.estimatedDaysLeft} Days
+            </div>
+            <div style="width:100%; max-width:80px; height:6px; background:#e2e8f0; border-radius:3px; margin:4px auto 0 auto; overflow:hidden;">
+              <div style="width:${Math.min(100, (item.estimatedDaysLeft / 30) * 100)}%; height:100%; background:${runwayColor};"></div>
+            </div>
+          </td>
+          <td style="padding:10px 12px; text-align:center;">${tierBadge}</td>
+          <td style="padding:10px 12px; text-align:right;">
+            ${item.aiRecommendedOrderQty > 0
+              ? `<span style="background:#ecfdf5; color:#047857; font-weight:800; padding:3px 8px; border-radius:6px; font-size:0.82rem; border:1px solid #a7f3d0;">+${Math.round(item.aiRecommendedOrderQty)} ${escapeHtml(item.unit)}</span>`
+              : `<span style="color:var(--muted); font-size:0.8rem;">Stock Adequate</span>`}
+          </td>
+          <td style="padding:10px 12px; font-size:0.8rem; color:#334155; line-height:1.4;">
+            ${escapeHtml(item.aiInsight)}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // --- COPILOT CHAT ---
+    async function sendUserQuery() {
+      const input = document.getElementById('copilotQueryInput');
+      const q = input.value.trim();
+      if (!q) return;
+      input.value = '';
+      askCopilot(q);
+    }
+
+    async function askCopilot(query) {
+      const chatArea = document.getElementById('chatMessageArea');
+
+      // Append user msg
+      const userDiv = document.createElement('div');
+      userDiv.className = 'chat-msg user';
+      userDiv.textContent = query;
+      chatArea.appendChild(userDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      // Loading state
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'chat-msg bot';
+      loadingDiv.innerHTML = '<em>🤖 Analyzing store inventory & velocity data...</em>';
+      chatArea.appendChild(loadingDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      try {
+        const res = await apiPost('/ai/chat', { query });
+        let html = res.response.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        if (res.highlights && res.highlights.length > 0) {
+          html += '<div style="margin-top:12px; display:flex; flex-direction:column; gap:6px;">';
+          res.highlights.forEach(h => {
+            html += `
+              <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px; font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+                <div><strong>${escapeHtml(h.name)}</strong> &nbsp;<span style="font-size:0.75rem; color:#6d28d9; font-weight:700;">${escapeHtml(h.badge)}</span></div>
+                <div style="color:#0f766e; font-weight:600;">${escapeHtml(h.recommendation)}</div>
+              </div>`;
+          });
+          html += '</div>';
+        }
+
+        loadingDiv.innerHTML = html;
+        chatArea.scrollTop = chatArea.scrollHeight;
+      } catch (err) {
+        loadingDiv.innerHTML = '<span style="color:#ef4444;">Sorry, I encountered an error answering your question. Please try again.</span>';
+      }
+    }
+
+    // --- AUDIT REPORT ---
+    function renderAuditReport() {
+      if (!expiryData || !demandData) return;
+      document.getElementById('reportAuditDate').textContent = 'Date: ' + new Date().toLocaleDateString('en-IN', { dateStyle: 'long' });
+      document.getElementById('repTotalSkus').textContent = expiryData.totalProducts;
+      document.getElementById('repUrgentExp').textContent = (expiryData.expiredCount + expiryData.criticalCount);
+      document.getElementById('repWasteVal').textContent = formatCurrency(expiryData.totalWasteRiskValue);
+      document.getElementById('repStockouts').textContent = demandData.stockoutRiskCount;
+
+      // Report Expiry Table
+      const expTbody = document.getElementById('repExpiryTable');
+      const urgentItems = (expiryData.items || []).filter(i => i.status === 'EXPIRED' || i.status === 'CRITICAL' || i.status === 'WARNING');
+      expTbody.innerHTML = urgentItems.map(i => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px; font-weight:600;">${escapeHtml(i.productName)}</td>
+          <td style="padding:6px 8px; text-align:center;">${i.expiryDate}</td>
+          <td style="padding:6px 8px; text-align:center; font-weight:700; ${i.status === 'EXPIRED' ? 'color:#dc2626;' : 'color:#ea580c;'}">${i.statusLabel}</td>
+          <td style="padding:6px 8px; text-align:right;">${i.stockQty} ${escapeHtml(i.unit)}</td>
+          <td style="padding:6px 8px; text-align:center;">${i.status === 'EXPIRED' ? 'REMOVE FROM SHELF' : `${i.aiRecommendedDiscount}% Clearance (Price: ₹${i.discountedPrice})`}</td>
+        </tr>
+      `).join('');
+
+      // Report Demand Table
+      const demTbody = document.getElementById('repDemandTable');
+      const reorderItems = (demandData.items || []).filter(i => i.aiRecommendedOrderQty > 0 || i.demandTier === 'HIGH_DEMAND');
+      demTbody.innerHTML = reorderItems.map(i => `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px; font-weight:600;">${escapeHtml(i.productName)}</td>
+          <td style="padding:6px 8px; text-align:right;">${i.dailyVelocity} / day</td>
+          <td style="padding:6px 8px; text-align:right; font-weight:700;">${i.stockQty} ${escapeHtml(i.unit)}</td>
+          <td style="padding:6px 8px; text-align:center;">${i.estimatedDaysLeft} days</td>
+          <td style="padding:6px 8px; text-align:right; font-weight:700; color:#047857;">+${Math.round(i.aiRecommendedOrderQty)} ${escapeHtml(i.unit)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function printPurchaseOrder() {
+      switchAiTab('report');
+      setTimeout(() => window.print(), 300);
+    }
+
+    // Initialize
+    refreshAllAiData();
+  </script>
+</body>
+</html>

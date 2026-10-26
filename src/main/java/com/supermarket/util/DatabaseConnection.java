@@ -77,7 +77,87 @@ public final class DatabaseConnection {
                     )
                 """);
             } catch (SQLException ignored) {}
+            try {
+                stmt.executeUpdate("ALTER TABLE bill_items MODIFY COLUMN quantity DECIMAL(10, 3) NOT NULL");
+            } catch (SQLException ignored) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE bill_items ALTER COLUMN quantity DECIMAL(10, 3) NOT NULL");
+                } catch (SQLException ignored2) {}
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE products MODIFY COLUMN stock_qty DECIMAL(10, 3) NOT NULL DEFAULT 0");
+            } catch (SQLException ignored) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE products ALTER COLUMN stock_qty DECIMAL(10, 3) NOT NULL DEFAULT 0");
+                } catch (SQLException ignored2) {}
+            }
+            try {
+                stmt.executeUpdate("INSERT INTO categories (category_id, category_name) VALUES (6, 'Vegetables') ON DUPLICATE KEY UPDATE category_name = 'Vegetables'");
+            } catch (SQLException ignored) {
+                try {
+                    stmt.executeUpdate("MERGE INTO categories (category_id, category_name) KEY(category_id) VALUES (6, 'Vegetables')");
+                } catch (SQLException ignored2) {}
+            }
+            try {
+                stmt.executeUpdate("INSERT INTO categories (category_id, category_name) VALUES (7, 'Fruits') ON DUPLICATE KEY UPDATE category_name = 'Fruits'");
+            } catch (SQLException ignored) {
+                try {
+                    stmt.executeUpdate("MERGE INTO categories (category_id, category_name) KEY(category_id) VALUES (7, 'Fruits')");
+                } catch (SQLException ignored2) {}
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE products ADD COLUMN expiry_date DATE");
+            } catch (SQLException ignored) {}
+            try {
+                stmt.executeUpdate("ALTER TABLE products ADD COLUMN batch_no VARCHAR(50)");
+            } catch (SQLException ignored) {}
+            try {
+                seedProductExpiryDates(conn);
+            } catch (Exception ignored) {}
         } catch (Exception ignored) {}
+    }
+
+    private static void seedProductExpiryDates(Connection conn) {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        // Check if products have null expiry_date
+        String checkSql = "SELECT COUNT(*) FROM products WHERE expiry_date IS NULL";
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(checkSql)) {
+            if (rs.next() && rs.getInt(1) > 0) {
+                // Populate realistic dates
+                updateProductExpiry(conn, "%curd%", today.minusDays(1), "BATCH-CRD01"); // Expired yesterday!
+                updateProductExpiry(conn, "%milk%", today.plusDays(3), "BATCH-MLK02");  // 3 days: Critical
+                updateProductExpiry(conn, "%tomato%", today.plusDays(4), "BATCH-VEG03"); // 4 days: Critical
+                updateProductExpiry(conn, "%butter%", today.plusDays(12), "BATCH-BTR04"); // 12 days: Warning
+                updateProductExpiry(conn, "%potato chips%", today.plusDays(24), "BATCH-CHP05"); // 24 days: Warning
+                updateProductExpiry(conn, "%biscuits%", today.plusDays(45), "BATCH-BSC06"); // 45 days: Healthy
+                updateProductExpiry(conn, "%chocolate%", today.plusDays(60), "BATCH-CHO07"); // 60 days: Healthy
+                updateProductExpiry(conn, "%cola%", today.plusDays(90), "BATCH-BEV08"); // 90 days: Healthy
+                updateProductExpiry(conn, "%water%", today.plusDays(180), "BATCH-WTR09"); // 180 days: Healthy
+                updateProductExpiry(conn, "%tea%", today.plusDays(240), "BATCH-TEA10"); // 240 days: Healthy
+                updateProductExpiry(conn, "%coffee%", today.plusDays(300), "BATCH-COF11"); // 300 days: Healthy
+                updateProductExpiry(conn, "%rice%", today.plusDays(365), "BATCH-RIC12"); // 1 year: Healthy
+                updateProductExpiry(conn, "%sugar%", today.plusDays(400), "BATCH-SUG13"); // Healthy
+                updateProductExpiry(conn, "%oil%", today.plusDays(365), "BATCH-OIL14"); // Healthy
+                updateProductExpiry(conn, "%flour%", today.plusDays(180), "BATCH-FLR15"); // Healthy
+                // Catch-all for any remaining products
+                String fallbackSql = "UPDATE products SET expiry_date = ?, batch_no = 'BATCH-STD' WHERE expiry_date IS NULL";
+                try (PreparedStatement ps = conn.prepareStatement(fallbackSql)) {
+                    ps.setDate(1, java.sql.Date.valueOf(today.plusDays(120)));
+                    ps.executeUpdate();
+                }
+            }
+        } catch (SQLException ignored) {}
+    }
+
+    private static void updateProductExpiry(Connection conn, String pattern, java.time.LocalDate date, String batch) {
+        String sql = "UPDATE products SET expiry_date = ?, batch_no = ? WHERE LOWER(product_name) LIKE ? AND expiry_date IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, java.sql.Date.valueOf(date));
+            ps.setString(2, batch);
+            ps.setString(3, pattern.toLowerCase());
+            ps.executeUpdate();
+        } catch (SQLException ignored) {}
     }
 
     public static void disableForeignKeyChecks(Connection conn) {
@@ -129,7 +209,7 @@ public final class DatabaseConnection {
                     product_name VARCHAR(150) NOT NULL,
                     category_id INT,
                     price DECIMAL(10, 2) NOT NULL,
-                    stock_qty INT NOT NULL DEFAULT 0,
+                    stock_qty DECIMAL(10, 3) NOT NULL DEFAULT 0,
                     unit VARCHAR(20) DEFAULT 'pcs',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (category_id) REFERENCES categories(category_id)
@@ -162,7 +242,7 @@ public final class DatabaseConnection {
                     item_id INT AUTO_INCREMENT PRIMARY KEY,
                     bill_id INT NOT NULL,
                     product_id INT NOT NULL,
-                    quantity INT NOT NULL,
+                    quantity DECIMAL(10, 3) NOT NULL,
                     unit_price DECIMAL(10, 2) NOT NULL,
                     line_total DECIMAL(10, 2) NOT NULL
                 );
@@ -224,7 +304,7 @@ public final class DatabaseConnection {
             if (isTableEmpty(conn, "shop_details")) {
                 stmt.execute("""
                     INSERT INTO shop_details (id, shop_name, address, phone, email, gstin, image_path, auto_delete_months) VALUES
-                    (1, 'RAHUL STORES', '123 Main Bazaar Road, Market City', '+91 98765 43210', 'contact@rahulstores.com', '33AAAAA0000A1Z5', '/images/shop_banner.jpg', 3)
+                    (1, 'RAHUL STORES', '123 Main Bazaar Road, Market City', '+91 98765 43210', 'contact@rahulstores.com', '33AAAAA0000A1Z5', '/images/logo.png', 3)
                 """);
             }
 

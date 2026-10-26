@@ -5,75 +5,206 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Products - Rahul Stores POS</title>
   <link rel="stylesheet" href="/css/style.css">
+  <!-- HTML5 QR Code / Barcode Scanner library (deferred) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 </head>
 <body>
   <div id="header"></div>
 
-  <div class="products-layout">
-    <div class="card">
-      <h3 style="margin-bottom:16px;" id="formTitle">Add / Edit Product</h3>
-      <form id="productForm">
-        <input type="hidden" id="editOriginalId" value="">
-        <div class="form-group">
-          <label for="productId">Product ID <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);">(Auto-generated if empty, or edit ID)</span></label>
-          <input type="number" id="productId" min="1" placeholder="Auto-generated or custom ID">
+  <div class="products-layout" style="display: grid; grid-template-columns: 380px 1fr; gap: 20px; max-width: 1300px; margin: 20px auto; padding: 0 16px;">
+    
+    <!-- LEFT PANEL: 2 Product Input Options -->
+    <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+      
+      <!-- Option Selector Tabs -->
+      <div class="input-tabs" style="border-radius: 6px 6px 0 0;">
+        <button class="tab-btn active" id="tabManualBtn" onclick="switchProductMode('manual')">
+          ✍️ Option 1: Manual Add
+        </button>
+        <button class="tab-btn" id="tabScanBtn" onclick="switchProductMode('scan')">
+          📷 Option 2: Scan Barcode
+        </button>
+      </div>
+
+      <div style="padding: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 id="formTitle" style="font-size:1.1rem; color:var(--text); margin:0;">Add Product</h3>
+          <span id="modeBadge" style="font-size:0.75rem; background:var(--primary-light); color:var(--primary-dark); font-weight:700; padding:3px 8px; border-radius:12px;">
+            ID Mode
+          </span>
         </div>
-        <div class="form-group">
-          <label>Barcode</label>
-          <input type="text" id="barcode" required>
+
+        <!-- Mode 1 Helper Notice -->
+        <div id="manualHelpNote" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:8px 12px; border-radius:6px; font-size:0.8rem; margin-bottom:14px; line-height:1.4;">
+          💡 <strong>Product ID is enough!</strong> Barcode is not needed. Enter a custom ID or leave it empty to auto-generate.
         </div>
-        <div class="form-group">
-          <label>Product Name</label>
-          <input type="text" id="productName" required>
+
+        <!-- Mode 2: Barcode Scanner Control Box -->
+        <div id="barcodeScannerBox" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; padding:12px; border-radius:6px; margin-bottom:14px;">
+          <div style="font-size:0.82rem; color:#166534; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <span>📷 Barcode Scanner Option</span>
+          </div>
+          
+          <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="openCameraScanner()">
+            📷 Open Live Camera Scanner
+          </button>
+
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="scanInput" placeholder="Scan or enter barcode..." 
+                   style="flex:1; padding:8px; border:1px solid var(--border); border-radius:4px; font-size:0.85rem;"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault(); processScannedCode(this.value.trim());}">
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.82rem;" onclick="processScannedCode(document.getElementById('scanInput').value.trim())">
+              Lookup
+            </button>
+          </div>
+
+          <div id="scanStatusMsg" style="margin-top:8px; font-size:0.78rem; color:var(--muted); display:none;"></div>
         </div>
-        <div class="form-group">
-          <label>Category</label>
-          <select id="categoryId">
-            <option value="1">Groceries</option>
-            <option value="2">Beverages</option>
-            <option value="3">Snacks</option>
-            <option value="4">Dairy</option>
-            <option value="5">Personal Care</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Price (Rs.)</label>
-          <input type="number" id="price" step="0.01" min="0" required>
-        </div>
-        <div class="form-group">
-          <label>Stock Qty</label>
-          <input type="number" id="stockQty" min="0" required>
-        </div>
-        <div class="form-group">
-          <label>Unit</label>
-          <input type="text" id="unit" value="pcs">
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button type="submit" class="btn btn-primary" id="saveProductBtn">Save Product</button>
-          <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
-          <button type="button" class="btn btn-danger" onclick="deleteProduct()">Delete</button>
-        </div>
-      </form>
+
+        <!-- Form for Adding / Editing Product -->
+        <form id="productForm">
+          <input type="hidden" id="editOriginalId" value="">
+          <input type="hidden" id="productBarcode" value="">
+
+          <!-- Barcode Indicator Pill (Only shown if a barcode was scanned) -->
+          <div id="scannedBarcodePill" style="display:none; align-items:center; justify-content:space-between; background:#fef3c7; border:1px solid #fde68a; color:#92400e; padding:6px 10px; border-radius:6px; font-size:0.8rem; margin-bottom:12px;">
+            <span>Attached Barcode: <strong id="scannedBarcodeVal"></strong></span>
+            <button type="button" style="background:none; border:none; color:#b45309; font-weight:bold; cursor:pointer; font-size:0.85rem;" onclick="removeScannedBarcode()">✕ Clear</button>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="productId" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">
+              Product ID <span style="font-size:0.75rem; font-weight:normal; color:var(--muted);">(Auto-generated if empty)</span>
+            </label>
+            <input type="number" id="productId" min="1" placeholder="Auto-generated or custom ID" 
+                   style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="productName" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Product Name *</label>
+            <input type="text" id="productName" placeholder="e.g. Basmati Rice 1kg" required
+                   style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="categoryId" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Category</label>
+            <select id="categoryId" onchange="onCategoryChange()" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem; background:white;">
+              <option value="1">Groceries</option>
+              <option value="6">Vegetables</option>
+              <option value="7">Fruits</option>
+              <option value="2">Beverages</option>
+              <option value="3">Snacks</option>
+              <option value="4">Dairy</option>
+              <option value="5">Personal Care</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom:12px;">
+            <div class="form-group">
+              <label for="price" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Price (Rs.) *</label>
+              <input type="number" id="price" step="0.01" min="0" placeholder="0.00" required oninput="updateGramRateHint()"
+                     style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+            </div>
+            <div class="form-group">
+              <label for="stockQty" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Stock Qty *</label>
+              <input type="number" id="stockQty" min="0" step="any" placeholder="0" required
+                     style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-bottom:12px;">
+            <div class="form-group">
+              <label for="expiryDate" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">
+                📅 Expiry Date <span style="font-size:0.72rem; color:#7c3aed; font-weight:700;">(AI Tracked)</span>
+              </label>
+              <input type="date" id="expiryDate"
+                     style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+            </div>
+            <div class="form-group">
+              <label for="batchNo" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Batch / Lot No</label>
+              <input type="text" id="batchNo" placeholder="BATCH-01"
+                     style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px;">
+            <label for="unit" style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Unit</label>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="unit" value="pcs" placeholder="pcs, kg, g, ltr, etc." oninput="updateGramRateHint()"
+                     style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:4px; font-size:0.9rem;">
+              <button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="setFormUnit('kg')">kg</button>
+              <button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="setFormUnit('g')">g</button>
+              <button type="button" class="btn btn-secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="setFormUnit('pcs')">pcs</button>
+            </div>
+            <div id="gramRateHint" style="display:none; font-size:0.8rem; color:#059669; font-weight:600; margin-top:6px; background:#ecfdf5; padding:6px 10px; border-radius:4px; border:1px solid #a7f3d0;"></div>
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <button type="submit" class="btn btn-primary" id="saveProductBtn" style="flex:1;">Save Product</button>
+            <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+            <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;" onclick="deleteProduct()">Delete</button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <div class="card" style="overflow:auto;">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Barcode</th>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Price</th>
-            <th>Stock</th>
-            <th>Unit</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="productTable"></tbody>
-      </table>
+    <!-- RIGHT PANEL: Products Table (Inventory) -->
+    <div class="card" style="display:flex; flex-direction:column; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 style="margin:0; font-size:1.2rem;">Product Inventory</h3>
+          <span style="font-size:0.8rem; color:var(--muted);" id="tableCountText">Showing products</span>
+        </div>
+        
+        <!-- Search filter by Product ID or Name -->
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="searchInput" placeholder="🔍 Search ID or Name..." 
+                 oninput="filterProducts(this.value)"
+                 style="padding:7px 12px; border:1px solid var(--border); border-radius:4px; font-size:0.85rem; min-width:220px;">
+          <button type="button" class="btn btn-secondary" style="padding:6px 12px; font-size:0.8rem;" onclick="loadProducts()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <div style="flex:1; overflow:auto; border:1px solid var(--border); border-radius:4px;">
+        <table class="data-table" style="width:100%; border-collapse:collapse;">
+          <thead style="background:#f8fafc; position:sticky; top:0; z-index:1;">
+            <tr>
+              <th style="padding:10px; text-align:left; border-bottom:2px solid var(--border);">ID</th>
+              <th style="padding:10px; text-align:left; border-bottom:2px solid var(--border);">Product Name</th>
+              <th style="padding:10px; text-align:left; border-bottom:2px solid var(--border);">Category</th>
+              <th style="padding:10px; text-align:right; border-bottom:2px solid var(--border);">Price</th>
+              <th style="padding:10px; text-align:right; border-bottom:2px solid var(--border);">Stock</th>
+              <th style="padding:10px; text-align:center; border-bottom:2px solid var(--border);">Unit</th>
+              <th style="padding:10px; text-align:center; border-bottom:2px solid var(--border);">Expiry Status (AI)</th>
+              <th style="padding:10px; text-align:center; border-bottom:2px solid var(--border);">Action</th>
+            </tr>
+          </thead>
+          <tbody id="productTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CAMERA BARCODE SCANNER MODAL -->
+  <div class="modal-overlay" id="cameraModal">
+    <div class="modal-card" style="max-width:460px; background:white; border-radius:8px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:var(--primary); color:white;">
+        <h3 style="margin:0; font-size:1.05rem;">📷 Live Camera Barcode Scanner</h3>
+        <button class="modal-close" onclick="closeCameraScanner()" style="background:none; border:none; color:white; font-size:1.4rem; cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:18px; text-align:center;">
+        <div id="cameraReader" style="width:100%; height:280px; background:#111; border-radius:6px; overflow:hidden; margin-bottom:10px;"></div>
+        <div id="scannerStatus" style="font-size:0.85rem; color:var(--muted);">Point your camera at product barcode or QR code.</div>
+      </div>
+      <div class="modal-footer" style="padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeCameraScanner()">Close Scanner</button>
+      </div>
     </div>
   </div>
+
+  <!-- Audio Beep sound for barcode scanner -->
+  <audio id="beepSound" src="https://actions.google.com/sounds/v1/sounds_library/office/keyboard_typing_fast.ogg" preload="auto"></audio>
 
   <script src="/js/api.js?v=2"></script>
   <script>
@@ -82,45 +213,195 @@
       alert('Only Admin can manage products.');
       window.location.href = '/dashboard.html';
     }
+    // Shop logo & header intact
     document.getElementById('header').innerHTML = renderHeader('Product Management', 'Add, edit and manage Rahul Stores inventory');
 
     let products = [];
+    let currentMode = 'manual'; // 'manual' or 'scan'
+    let html5QrCodeScanner = null;
 
+    function playBeep() {
+      try {
+        const audio = document.getElementById('beepSound');
+        if (audio) { audio.currentTime = 0; audio.play().catch(()=>{}); }
+      } catch(e) {}
+    }
+
+    // --- MODE SWITCHER (Option 1 vs Option 2) ---
+    function switchProductMode(mode) {
+      currentMode = mode;
+      const tabManual = document.getElementById('tabManualBtn');
+      const tabScan = document.getElementById('tabScanBtn');
+      const manualHelpNote = document.getElementById('manualHelpNote');
+      const barcodeBox = document.getElementById('barcodeScannerBox');
+      const modeBadge = document.getElementById('modeBadge');
+
+      if (mode === 'manual') {
+        tabManual.classList.add('active');
+        tabScan.classList.remove('active');
+        manualHelpNote.style.display = 'block';
+        barcodeBox.style.display = 'none';
+        modeBadge.textContent = 'ID Mode';
+        modeBadge.style.background = 'var(--primary-light)';
+        modeBadge.style.color = 'var(--primary-dark)';
+      } else {
+        tabScan.classList.add('active');
+        tabManual.classList.remove('active');
+        manualHelpNote.style.display = 'none';
+        barcodeBox.style.display = 'block';
+        modeBadge.textContent = 'Barcode Scan Mode';
+        modeBadge.style.background = '#dcfce7';
+        modeBadge.style.color = '#15803d';
+        setTimeout(() => document.getElementById('scanInput').focus(), 100);
+      }
+    }
+
+    // --- LOAD AND RENDER PRODUCTS TABLE ---
     async function loadProducts() {
       try {
         products = await apiGet('/products');
-        const tbody = document.getElementById('productTable');
-        tbody.innerHTML = products.map(p => `
-          <tr onclick="selectProduct(${p.productId})" id="prod-row-${p.productId}" style="cursor:pointer;">
-            <td><strong>#${p.productId}</strong></td>
-            <td>${p.barcode || ''}</td>
-            <td><strong>${p.productName}</strong></td>
-            <td>${p.categoryName || ''}</td>
-            <td>${formatCurrency(p.price)}</td>
-            <td>${p.stockQty}</td>
-            <td>${p.unit}</td>
-            <td onclick="event.stopPropagation();">
-              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="selectProduct(${p.productId})">✏️ Edit</button>
-            </td>
-          </tr>
-        `).join('');
+        renderProductTable(products);
       } catch (err) { alert(err.message); }
+    }
+
+    function renderProductTable(list) {
+      const tbody = document.getElementById('productTable');
+      document.getElementById('tableCountText').textContent = `Total ${list.length} item${list.length === 1 ? '' : 's'}`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--muted);">No products found. Add your first item on the left!</td></tr>`;
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      tbody.innerHTML = list.map(p => {
+        const u = (p.unit || 'pcs').toLowerCase();
+        let priceDisplay = formatCurrency(p.price);
+        let gramSub = '';
+        if (u === 'kg') {
+          priceDisplay += ' / kg';
+          gramSub = `<div style="font-size:0.75rem; color:#059669; font-weight:600; margin-top:2px;">₹${(p.price / 1000).toFixed(3)}/g (₹${(p.price / 10).toFixed(2)}/100g)</div>`;
+        } else if (u === 'g' || u === 'gram') {
+          priceDisplay += ' / g';
+          gramSub = `<div style="font-size:0.75rem; color:#059669; font-weight:600; margin-top:2px;">₹${(p.price * 100).toFixed(2)}/100g</div>`;
+        } else if (u !== 'pcs') {
+          priceDisplay += ` / ${escapeHtml(p.unit)}`;
+        }
+
+        // Expiry Status Badge (AI Tracked)
+        let expiryBadge = '<span style="color:#94a3b8; font-size:0.75rem;">No Date</span>';
+        if (p.expiryDate) {
+          const exp = new Date(p.expiryDate);
+          exp.setHours(0,0,0,0);
+          const diffDays = Math.round((exp - today) / (1000 * 60 * 60 * 24));
+          
+          if (diffDays <= 0) {
+            expiryBadge = `<span style="background:#fee2e2; color:#b91c1c; font-weight:700; padding:3px 8px; border-radius:12px; font-size:0.75rem; border:1px solid #fca5a5; display:inline-block;">🔴 Expired (${Math.abs(diffDays)}d)</span>`;
+          } else if (diffDays <= 7) {
+            expiryBadge = `<span style="background:#ffedd5; color:#c2410c; font-weight:700; padding:3px 8px; border-radius:12px; font-size:0.75rem; border:1px solid #fdba74; display:inline-block;">🟠 ${diffDays}d left</span>`;
+          } else if (diffDays <= 30) {
+            expiryBadge = `<span style="background:#fef9c3; color:#854d0e; font-weight:600; padding:3px 8px; border-radius:12px; font-size:0.75rem; border:1px solid #fde047; display:inline-block;">🟡 ${diffDays}d left</span>`;
+          } else {
+            expiryBadge = `<span style="background:#dcfce7; color:#15803d; font-weight:600; padding:3px 8px; border-radius:12px; font-size:0.75rem; border:1px solid #86efac; display:inline-block;">🟢 Fresh (${diffDays}d)</span>`;
+          }
+        }
+
+        return `
+        <tr onclick="selectProduct(${p.productId})" id="prod-row-${p.productId}" style="cursor:pointer; border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 12px; font-weight:700; color:var(--primary-dark);">#${p.productId}</td>
+          <td style="padding:10px 12px; font-weight:600;">
+            ${escapeHtml(p.productName)}
+            ${p.batchNo ? `<span style="display:block; font-size:0.7rem; color:var(--muted);">${escapeHtml(p.batchNo)}</span>` : ''}
+          </td>
+          <td style="padding:10px 12px; color:var(--muted);">${escapeHtml(p.categoryName || '')}</td>
+          <td style="padding:10px 12px; text-align:right; font-weight:700;">
+            ${priceDisplay}
+            ${gramSub}
+          </td>
+          <td style="padding:10px 12px; text-align:right; ${p.stockQty <= 5 ? 'color:var(--danger);font-weight:bold;' : ''}">${p.stockQty}</td>
+          <td style="padding:10px 12px; text-align:center; color:var(--muted);"><span style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.8rem;font-weight:600;">${escapeHtml(p.unit || 'pcs')}</span></td>
+          <td style="padding:10px 12px; text-align:center;">${expiryBadge}</td>
+          <td style="padding:10px 12px; text-align:center;" onclick="event.stopPropagation();">
+            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="selectProduct(${p.productId})">✏️ Edit</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setFormUnit(u) {
+      document.getElementById('unit').value = u;
+      updateGramRateHint();
+    }
+
+    function onCategoryChange() {
+      const cat = document.getElementById('categoryId').value;
+      if (cat === '6' || cat === '7') { // Vegetables or Fruits
+        if (document.getElementById('unit').value === 'pcs') {
+          document.getElementById('unit').value = 'kg';
+        }
+      }
+      updateGramRateHint();
+    }
+
+    function updateGramRateHint() {
+      const p = parseFloat(document.getElementById('price').value) || 0;
+      const u = (document.getElementById('unit').value || '').trim().toLowerCase();
+      const hint = document.getElementById('gramRateHint');
+      if (u === 'kg' && p > 0) {
+        hint.style.display = 'block';
+        hint.innerHTML = `⚖️ <strong>Vegetable / Weighed Rate:</strong> ₹${(p / 1000).toFixed(3)} / gram &nbsp;|&nbsp; <strong>₹${(p / 10).toFixed(2)}</strong> per 100g &nbsp;|&nbsp; <strong>₹${(p / 4).toFixed(2)}</strong> per 250g`;
+      } else if ((u === 'g' || u === 'gram') && p > 0) {
+        hint.style.display = 'block';
+        hint.innerHTML = `⚖️ <strong>Rate:</strong> ₹${p.toFixed(2)} / gram &nbsp;|&nbsp; <strong>₹${(p * 100).toFixed(2)}</strong> per 100g`;
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+
+    function filterProducts(query) {
+      const q = query.toLowerCase().trim();
+      if (!q) {
+        renderProductTable(products);
+        return;
+      }
+      const filtered = products.filter(p => 
+        String(p.productId).includes(q) ||
+        (p.productName && p.productName.toLowerCase().includes(q)) ||
+        (p.categoryName && p.categoryName.toLowerCase().includes(q))
+      );
+      renderProductTable(filtered);
     }
 
     function selectProduct(id) {
       const p = products.find(x => x.productId === id);
       if (!p) return;
+
       document.getElementById('editOriginalId').value = p.productId;
       document.getElementById('productId').value = p.productId;
-      document.getElementById('barcode').value = p.barcode;
       document.getElementById('productName').value = p.productName;
       document.getElementById('categoryId').value = p.categoryId;
       document.getElementById('price').value = p.price;
       document.getElementById('stockQty').value = p.stockQty;
-      document.getElementById('unit').value = p.unit;
-      document.getElementById('formTitle').textContent = `Edit Product (Editing ID #${p.productId})`;
-      document.getElementById('saveProductBtn').textContent = 'Update Product';
+      document.getElementById('unit').value = p.unit || 'pcs';
+      document.getElementById('expiryDate').value = p.expiryDate || '';
+      document.getElementById('batchNo').value = p.batchNo || '';
 
+      updateGramRateHint();
+
+      // Barcode handling (hidden/pill)
+      if (p.barcode) {
+        setAttachedBarcode(p.barcode);
+      } else {
+        removeScannedBarcode();
+      }
+
+      document.getElementById('formTitle').textContent = `Edit Product #${p.productId}`;
+      document.getElementById('saveProductBtn').textContent = 'Update Product';
+      document.getElementById('deleteBtn').style.display = 'inline-block';
+
+      // Highlight active row in table
       document.querySelectorAll('#productTable tr').forEach(r => r.style.background = '');
       const activeRow = document.getElementById(`prod-row-${p.productId}`);
       if (activeRow) activeRow.style.background = 'rgba(79, 70, 229, 0.08)';
@@ -131,22 +412,128 @@
       document.getElementById('productForm').reset();
       document.getElementById('productId').value = '';
       document.getElementById('unit').value = 'pcs';
-      document.getElementById('formTitle').textContent = 'Add / Edit Product';
+      document.getElementById('expiryDate').value = '';
+      document.getElementById('batchNo').value = '';
+      updateGramRateHint();
+      removeScannedBarcode();
+      document.getElementById('formTitle').textContent = 'Add Product';
       document.getElementById('saveProductBtn').textContent = 'Save Product';
+      document.getElementById('deleteBtn').style.display = 'none';
       document.querySelectorAll('#productTable tr').forEach(r => r.style.background = '');
+      
+      const scanStatus = document.getElementById('scanStatusMsg');
+      scanStatus.style.display = 'none';
+      document.getElementById('scanInput').value = '';
     }
 
+    function setAttachedBarcode(code) {
+      document.getElementById('productBarcode').value = code;
+      document.getElementById('scannedBarcodeVal').textContent = code;
+      document.getElementById('scannedBarcodePill').style.display = 'flex';
+    }
+
+    function removeScannedBarcode() {
+      document.getElementById('productBarcode').value = '';
+      document.getElementById('scannedBarcodePill').style.display = 'none';
+    }
+
+    // --- OPTION 2: BARCODE PROCESSING ---
+    async function processScannedCode(code) {
+      if (!code) return;
+      playBeep();
+
+      const statusBox = document.getElementById('scanStatusMsg');
+      statusBox.style.display = 'block';
+      statusBox.innerHTML = `🔍 Checking barcode <strong>${escapeHtml(code)}</strong>...`;
+
+      try {
+        // Check if barcode already exists
+        const existing = await apiGet('/products/barcode/' + encodeURIComponent(code));
+        if (existing && existing.productId) {
+          statusBox.innerHTML = `✅ <strong>Found existing item:</strong> #${existing.productId} - ${escapeHtml(existing.productName)}`;
+          statusBox.style.color = '#15803d';
+          selectProduct(existing.productId);
+          return;
+        }
+      } catch (e) {
+        // Not found: that means it is a new item with this barcode!
+      }
+
+      // If not existing, prepare form for new product with this barcode
+      clearForm();
+      setAttachedBarcode(code);
+      statusBox.innerHTML = `✨ <strong>New barcode ready:</strong> ${escapeHtml(code)}. Fill details below to add.`;
+      statusBox.style.color = '#0284c7';
+      document.getElementById('productName').focus();
+    }
+
+    // --- CAMERA BARCODE SCANNER ---
+    function openCameraScanner() {
+      document.getElementById('cameraModal').classList.add('active');
+      document.getElementById('scannerStatus').textContent = 'Starting camera...';
+
+      if (typeof Html5Qrcode === 'undefined') {
+        document.getElementById('cameraReader').innerHTML = `
+          <div style="padding:40px 20px; color:#d97706; font-size:0.9rem;">
+            💡 Camera scanner requires internet connection.<br>You can still add items using Product ID or Barcode input!
+          </div>`;
+        return;
+      }
+
+      try {
+        html5QrCodeScanner = new Html5Qrcode("cameraReader");
+        html5QrCodeScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            playBeep();
+            document.getElementById('scannerStatus').textContent = 'Scanned: ' + decodedText;
+            document.getElementById('scanInput').value = decodedText;
+            closeCameraScanner();
+            processScannedCode(decodedText);
+          },
+          (errorMessage) => { /* scanning... */ }
+        ).catch(err => {
+          document.getElementById('cameraReader').innerHTML = `
+            <div style="padding:40px 20px; color:#ef4444; font-size:0.9rem;">
+              ⚠️ Camera access denied or not found.<br>You can use manual barcode entry or Product ID.
+            </div>`;
+        });
+      } catch (err) {
+        document.getElementById('scannerStatus').textContent = 'Camera scanner error: ' + err.message;
+      }
+    }
+
+    function closeCameraScanner() {
+      if (html5QrCodeScanner) {
+        html5QrCodeScanner.stop().catch(() => {}).then(() => {
+          html5QrCodeScanner = null;
+        });
+      }
+      document.getElementById('cameraModal').classList.remove('active');
+    }
+
+    // Close modal on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeCameraScanner();
+    });
+
+    // --- SUBMIT FORM ---
     document.getElementById('productForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const rawId = document.getElementById('productId').value.trim();
+      const attachedBarcode = document.getElementById('productBarcode').value.trim();
+
       const product = {
         productId: rawId ? parseInt(rawId) : 0,
-        barcode: document.getElementById('barcode').value.trim(),
+        barcode: attachedBarcode || null, // null when manual add without barcode
         productName: document.getElementById('productName').value.trim(),
         categoryId: parseInt(document.getElementById('categoryId').value),
         price: parseFloat(document.getElementById('price').value),
-        stockQty: parseInt(document.getElementById('stockQty').value),
-        unit: document.getElementById('unit').value.trim()
+        stockQty: parseFloat(document.getElementById('stockQty').value) || 0,
+        unit: document.getElementById('unit').value.trim() || 'pcs',
+        expiryDate: document.getElementById('expiryDate').value || null,
+        batchNo: document.getElementById('batchNo').value.trim() || null
       };
 
       try {
@@ -156,13 +543,16 @@
           alert(res && res.message ? res.message : 'Product updated!');
         } else {
           const res = await apiPost('/products', product);
-          alert(res && res.message ? res.message : 'Product added!');
+          alert(res && res.message ? res.message : 'Product added successfully!');
         }
         clearForm();
         loadProducts();
-      } catch (err) { alert(err.message); }
+      } catch (err) { 
+        alert(err.message); 
+      }
     });
 
+    // --- DELETE PRODUCT ---
     async function deleteProduct() {
       const origId = document.getElementById('editOriginalId').value;
       if (!origId) { alert('Select a product to delete.'); return; }
@@ -174,6 +564,14 @@
       } catch (err) { alert(err.message); }
     }
 
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    // Load initial products
     loadProducts();
   </script>
 </body>

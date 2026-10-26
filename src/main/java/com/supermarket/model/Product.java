@@ -8,14 +8,22 @@ public class Product {
     private int categoryId;
     private String categoryName;
     private double price;
-    private int stockQty;
+    private double stockQty;
     private String unit;
+    private String expiryDate;
+    private String batchNo;
 
     public Product() {}
 
     public Product(int productId, String barcode, String productName,
                    int categoryId, String categoryName, double price,
-                   int stockQty, String unit) {
+                   double stockQty, String unit) {
+        this(productId, barcode, productName, categoryId, categoryName, price, stockQty, unit, null, null);
+    }
+
+    public Product(int productId, String barcode, String productName,
+                   int categoryId, String categoryName, double price,
+                   double stockQty, String unit, String expiryDate, String batchNo) {
         this.productId = productId;
         this.barcode = barcode;
         this.productName = productName;
@@ -24,6 +32,8 @@ public class Product {
         this.price = price;
         this.stockQty = stockQty;
         this.unit = unit;
+        this.expiryDate = expiryDate;
+        this.batchNo = batchNo;
     }
 
     public int getProductId() { return productId; }
@@ -44,9 +54,15 @@ public class Product {
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
 
-    public int getStockQty() { return stockQty; }
-    public void setStockQty(int stockQty) { this.stockQty = stockQty; }
+    public double getStockQty() { return stockQty; }
+    public void setStockQty(double stockQty) { this.stockQty = stockQty; }
 
     public String getUnit() { return unit; }
     public void setUnit(String unit) { this.unit = unit; }
+
+    public String getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(String expiryDate) { this.expiryDate = expiryDate; }
+
+    public String getBatchNo() { return batchNo; }
+    public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
 }

@@ -7,13 +7,13 @@ public class BillItem {
     private int productId;
     private String productName;
     private String barcode;
-    private int quantity;
+    private double quantity;
     private double unitPrice;
     private double lineTotal;
 
     public BillItem() {}
 
-    public BillItem(Product product, int quantity) {
+    public BillItem(Product product, double quantity) {
         this.productId = product.getProductId();
         this.productName = product.getProductName();
         this.barcode = product.getBarcode();
@@ -31,8 +31,8 @@ public class BillItem {
     public String getBarcode() { return barcode; }
     public void setBarcode(String barcode) { this.barcode = barcode; }
 
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) {
+    public double getQuantity() { return quantity; }
+    public void setQuantity(double quantity) {
         this.quantity = quantity;
         this.lineTotal = unitPrice * quantity;
     }

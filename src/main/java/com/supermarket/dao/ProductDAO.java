@@ -13,7 +13,7 @@ public class ProductDAO {
         List<Product> products = new ArrayList<>();
         String sql = """
             SELECT p.product_id, p.barcode, p.product_name, p.category_id,
-                   c.category_name, p.price, p.stock_qty, p.unit
+                   c.category_name, p.price, p.stock_qty, p.unit, p.expiry_date, p.batch_no
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.category_id
             ORDER BY p.product_name
@@ -31,7 +31,7 @@ public class ProductDAO {
     public Product findById(int productId) throws SQLException {
         String sql = """
             SELECT p.product_id, p.barcode, p.product_name, p.category_id,
-                   c.category_name, p.price, p.stock_qty, p.unit
+                   c.category_name, p.price, p.stock_qty, p.unit, p.expiry_date, p.batch_no
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.category_id
             WHERE p.product_id = ?
@@ -49,7 +49,7 @@ public class ProductDAO {
     public Product findByBarcode(String barcode) throws SQLException {
         String sql = """
             SELECT p.product_id, p.barcode, p.product_name, p.category_id,
-                   c.category_name, p.price, p.stock_qty, p.unit
+                   c.category_name, p.price, p.stock_qty, p.unit, p.expiry_date, p.batch_no
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.category_id
             WHERE p.barcode = ?
@@ -68,7 +68,7 @@ public class ProductDAO {
         List<Product> products = new ArrayList<>();
         String sql = """
             SELECT p.product_id, p.barcode, p.product_name, p.category_id,
-                   c.category_name, p.price, p.stock_qty, p.unit
+                   c.category_name, p.price, p.stock_qty, p.unit, p.expiry_date, p.batch_no
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.category_id
             WHERE p.product_name LIKE ? OR p.barcode LIKE ? OR CAST(p.product_id AS CHAR) = ?
@@ -90,20 +90,40 @@ public class ProductDAO {
     public void addProduct(Product product) throws SQLException {
         boolean hasCustomId = product.getProductId() > 0;
         String sql = hasCustomId
-            ? "INSERT INTO products (product_id, barcode, product_name, category_id, price, stock_qty, unit) VALUES (?, ?, ?, ?, ?, ?, ?)"
-            : "INSERT INTO products (barcode, product_name, category_id, price, stock_qty, unit) VALUES (?, ?, ?, ?, ?, ?)";
+            ? "INSERT INTO products (product_id, barcode, product_name, category_id, price, stock_qty, unit, expiry_date, batch_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            : "INSERT INTO products (barcode, product_name, category_id, price, stock_qty, unit, expiry_date, batch_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             int idx = 1;
             if (hasCustomId) {
                 ps.setInt(idx++, product.getProductId());
             }
-            ps.setString(idx++, product.getBarcode());
+            String barcode = (product.getBarcode() != null && !product.getBarcode().trim().isEmpty())
+                ? product.getBarcode().trim() : null;
+            if (barcode != null) {
+                ps.setString(idx++, barcode);
+            } else {
+                ps.setNull(idx++, java.sql.Types.VARCHAR);
+            }
             ps.setString(idx++, product.getProductName());
             ps.setInt(idx++, product.getCategoryId());
             ps.setDouble(idx++, product.getPrice());
-            ps.setInt(idx++, product.getStockQty());
+            ps.setDouble(idx++, product.getStockQty());
             ps.setString(idx++, product.getUnit());
+            
+            // Expiry Date
+            if (product.getExpiryDate() != null && !product.getExpiryDate().trim().isEmpty()) {
+                try {
+                    ps.setDate(idx++, java.sql.Date.valueOf(product.getExpiryDate().trim()));
+                } catch (IllegalArgumentException e) {
+                    ps.setNull(idx++, java.sql.Types.DATE);
+                }
+            } else {
+                ps.setNull(idx++, java.sql.Types.DATE);
+            }
+            // Batch No
+            ps.setString(idx++, (product.getBatchNo() != null && !product.getBatchNo().trim().isEmpty()) ? product.getBatchNo().trim() : null);
+
             ps.executeUpdate();
             if (!hasCustomId) {
                 try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -126,16 +146,33 @@ public class ProductDAO {
             conn.setAutoCommit(false);
             DatabaseConnection.disableForeignKeyChecks(conn);
             try {
-                String sql = "UPDATE products SET product_id=?, barcode=?, product_name=?, category_id=?, price=?, stock_qty=?, unit=? WHERE product_id=?";
+                String sql = "UPDATE products SET product_id=?, barcode=?, product_name=?, category_id=?, price=?, stock_qty=?, unit=?, expiry_date=?, batch_no=? WHERE product_id=?";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setInt(1, newId);
-                    ps.setString(2, product.getBarcode());
+                    String barcode = (product.getBarcode() != null && !product.getBarcode().trim().isEmpty())
+                        ? product.getBarcode().trim() : null;
+                    if (barcode != null) {
+                        ps.setString(2, barcode);
+                    } else {
+                        ps.setNull(2, java.sql.Types.VARCHAR);
+                    }
                     ps.setString(3, product.getProductName());
                     ps.setInt(4, product.getCategoryId());
                     ps.setDouble(5, product.getPrice());
-                    ps.setInt(6, product.getStockQty());
+                    ps.setDouble(6, product.getStockQty());
                     ps.setString(7, product.getUnit());
-                    ps.setInt(8, oldId);
+                    
+                    if (product.getExpiryDate() != null && !product.getExpiryDate().trim().isEmpty()) {
+                        try {
+                            ps.setDate(8, java.sql.Date.valueOf(product.getExpiryDate().trim()));
+                        } catch (IllegalArgumentException e) {
+                            ps.setNull(8, java.sql.Types.DATE);
+                        }
+                    } else {
+                        ps.setNull(8, java.sql.Types.DATE);
+                    }
+                    ps.setString(9, (product.getBatchNo() != null && !product.getBatchNo().trim().isEmpty()) ? product.getBatchNo().trim() : null);
+                    ps.setInt(10, oldId);
                     ps.executeUpdate();
                 }
                 if (newId != oldId) {
@@ -154,6 +191,26 @@ public class ProductDAO {
                 DatabaseConnection.enableForeignKeyChecks(conn);
                 conn.setAutoCommit(autoCommit);
             }
+        }
+    }
+
+    public void updatePrice(int productId, double newPrice) throws SQLException {
+        String sql = "UPDATE products SET price = ? WHERE product_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, newPrice);
+            ps.setInt(2, productId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateStock(int productId, double addedStock) throws SQLException {
+        String sql = "UPDATE products SET stock_qty = stock_qty + ? WHERE product_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, addedStock);
+            ps.setInt(2, productId);
+            ps.executeUpdate();
         }
     }
 
@@ -176,6 +233,18 @@ public class ProductDAO {
     }
 
     private Product mapRow(ResultSet rs) throws SQLException {
+        String exp = null;
+        try {
+            Date d = rs.getDate("expiry_date");
+            if (d != null) exp = d.toString();
+        } catch (SQLException ignored) {
+            try { exp = rs.getString("expiry_date"); } catch (SQLException ignored2) {}
+        }
+        String batch = null;
+        try {
+            batch = rs.getString("batch_no");
+        } catch (SQLException ignored) {}
+
         return new Product(
             rs.getInt("product_id"),
             rs.getString("barcode"),
@@ -183,8 +252,10 @@ public class ProductDAO {
             rs.getInt("category_id"),
             rs.getString("category_name"),
             rs.getDouble("price"),
-            rs.getInt("stock_qty"),
-            rs.getString("unit")
+            rs.getDouble("stock_qty"),
+            rs.getString("unit"),
+            exp,
+            batch
         );
     }
 }

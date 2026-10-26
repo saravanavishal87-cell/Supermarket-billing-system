@@ -25,14 +25,48 @@
       </div>
     </div>
 
+    <!-- AI INTELLIGENCE SPOTLIGHT CARD -->
+    <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%); color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="max-width: 600px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="background: rgba(255,255,255,0.25); padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            ✨ AI-Powered Store Engine
+          </span>
+          <span style="font-size: 0.8rem; opacity: 0.9;">Real-Time Machine Analysis</span>
+        </div>
+        <h2 style="margin: 0 0 6px 0; font-size: 1.4rem; font-weight: 800;">Smart Expiry Tracking & Product Demand Forecasting</h2>
+        <p style="margin: 0; font-size: 0.88rem; opacity: 0.9; line-height: 1.4;">
+          Predict stockout risks, track expiring items, prevent food waste with AI dynamic clearance discounts, and chat with Rahul AI Store Copilot.
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="background: rgba(255,255,255,0.15); padding: 10px 16px; border-radius: 8px; text-align: center; backdrop-filter: blur(4px);">
+          <div style="font-size: 0.72rem; opacity: 0.85; text-transform: uppercase; font-weight: 600;">Expiring Soon</div>
+          <div style="font-size: 1.3rem; font-weight: 800;" id="aiExpiringCount">-</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.15); padding: 10px 16px; border-radius: 8px; text-align: center; backdrop-filter: blur(4px);">
+          <div style="font-size: 0.72rem; opacity: 0.85; text-transform: uppercase; font-weight: 600;">Stockout Risks</div>
+          <div style="font-size: 1.3rem; font-weight: 800;" id="aiStockoutCount">-</div>
+        </div>
+        <a href="/ai-insights.html" class="btn" style="background: white; color: #6d28d9; font-weight: 700; padding: 12px 20px; border-radius: 8px; font-size: 0.92rem; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap;">
+          🚀 Open AI Hub &rarr;
+        </a>
+      </div>
+    </div>
+
     <div class="nav-grid">
       <a href="/billing.html" class="nav-card billing">
         <h3>🛒 New Bill</h3>
         <p>Start POS checkout & issue invoice receipt</p>
       </a>
+      <a href="/ai-insights.html" class="nav-card" style="border-left: 4px solid #7c3aed; background: #faf5ff;">
+        <h3 style="color: #7c3aed;">🤖 AI Store Intelligence</h3>
+        <p>Expiry radar, clearance pricing, demand velocity & AI Copilot</p>
+      </a>
       <a href="/products.html" class="nav-card products" id="productsLink">
         <h3>📦 Product Inventory</h3>
-        <p>Manage store items & pricing</p>
+        <p>Manage store items, expiry dates & pricing</p>
       </a>
       <a href="/monthly-income.html" class="nav-card" style="border-left: 4px solid #10b981;">
         <h3 style="color: #059669;">📊 Monthly Statement</h3>
@@ -72,6 +106,15 @@
         document.getElementById('salesValue').textContent = formatCurrency(stats.todaySales);
         document.getElementById('billsValue').textContent = stats.todayBills;
         document.getElementById('productsValue').textContent = stats.productCount;
+      } catch (err) {
+        console.error(err);
+      }
+
+      // Load AI Quick Stats
+      try {
+        const aiStats = await apiGet('/ai/quick-stats');
+        document.getElementById('aiExpiringCount').textContent = (aiStats.expiredCount + aiStats.criticalExpiryCount) + ' items';
+        document.getElementById('aiStockoutCount').textContent = aiStats.stockoutRiskCount + ' items';
       } catch (err) {
         console.error(err);
       }

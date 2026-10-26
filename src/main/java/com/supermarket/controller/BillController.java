@@ -56,6 +56,12 @@ public class BillController {
                         customerName = newCust.getName();
                     }
                 }
+            } else if (customerName != null && !customerName.isBlank() && !customerName.equalsIgnoreCase("Walk-in Customer")) {
+                com.supermarket.model.Customer c = customerDAO.getByName(customerName);
+                if (c != null) {
+                    customerId = c.getCustomerId();
+                    if (customerPhone == null) customerPhone = c.getPhone();
+                }
             }
         } catch (Exception e) {
             System.err.println("[BillController] Customer linking notice: " + e.getMessage());

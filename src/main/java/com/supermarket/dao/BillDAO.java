@@ -50,7 +50,7 @@ public class BillDAO {
                 for (BillItem item : bill.getItems()) {
                     ps.setInt(1, billId);
                     ps.setInt(2, item.getProductId());
-                    ps.setInt(3, item.getQuantity());
+                    ps.setDouble(3, item.getQuantity());
                     ps.setDouble(4, item.getUnitPrice());
                     ps.setDouble(5, item.getLineTotal());
                     ps.addBatch();
@@ -61,9 +61,9 @@ public class BillDAO {
             String stockSql = "UPDATE products SET stock_qty = stock_qty - ? WHERE product_id = ? AND stock_qty >= ?";
             try (PreparedStatement ps = conn.prepareStatement(stockSql)) {
                 for (BillItem item : bill.getItems()) {
-                    ps.setInt(1, item.getQuantity());
+                    ps.setDouble(1, item.getQuantity());
                     ps.setInt(2, item.getProductId());
-                    ps.setInt(3, item.getQuantity());
+                    ps.setDouble(3, item.getQuantity());
                     if (ps.executeUpdate() == 0) {
                         throw new SQLException("Insufficient stock for product ID: " + item.getProductId());
                     }
@@ -270,7 +270,7 @@ public class BillDAO {
                     item.setItemId(rs.getInt("item_id"));
                     item.setBillId(rs.getInt("bill_id"));
                     item.setProductId(rs.getInt("product_id"));
-                    item.setQuantity(rs.getInt("quantity"));
+                    item.setQuantity(rs.getDouble("quantity"));
                     item.setUnitPrice(rs.getDouble("unit_price"));
                     item.setLineTotal(rs.getDouble("line_total"));
                     item.setProductName(rs.getString("product_name"));

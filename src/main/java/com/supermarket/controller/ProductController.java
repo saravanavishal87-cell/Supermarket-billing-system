@@ -74,6 +74,15 @@ public class ProductController {
                     return ResponseEntity.badRequest().body(Map.of("error", "Product ID " + product.getProductId() + " already exists"));
                 }
             }
+            if (product.getBarcode() != null && !product.getBarcode().trim().isEmpty()) {
+                product.setBarcode(product.getBarcode().trim());
+                Product existingBarcode = productDAO.findByBarcode(product.getBarcode());
+                if (existingBarcode != null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Barcode already exists on Product #" + existingBarcode.getProductId() + " (" + existingBarcode.getProductName() + ")"));
+                }
+            } else {
+                product.setBarcode(null);
+            }
             productDAO.addProduct(product);
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "Product added successfully", "productId", product.getProductId()));
         } catch (SQLException e) {
@@ -94,6 +103,15 @@ public class ProductController {
                 if (conflict != null) {
                     return ResponseEntity.badRequest().body(Map.of("error", "Product ID " + newId + " is already in use by another product (" + conflict.getProductName() + ")"));
                 }
+            }
+            if (product.getBarcode() != null && !product.getBarcode().trim().isEmpty()) {
+                product.setBarcode(product.getBarcode().trim());
+                Product existingBarcode = productDAO.findByBarcode(product.getBarcode());
+                if (existingBarcode != null && existingBarcode.getProductId() != id && existingBarcode.getProductId() != newId) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Barcode already exists on Product #" + existingBarcode.getProductId() + " (" + existingBarcode.getProductName() + ")"));
+                }
+            } else {
+                product.setBarcode(null);
             }
             productDAO.updateProduct(id, product);
             return ResponseEntity.ok(Map.of("message", "Product updated successfully", "productId", newId));

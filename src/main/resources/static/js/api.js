@@ -58,6 +58,16 @@ function formatCurrency(amount) {
   return 'Rs. ' + Number(amount).toFixed(2);
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderHeader(title, subtitle) {
   const user = getUser();
   const currentPath = window.location.pathname;
@@ -66,7 +76,7 @@ function renderHeader(title, subtitle) {
   const html = `
     <header class="header">
       <a href="/dashboard.html" class="header-brand">
-        <img id="navHeaderLogo" src="/images/shop_banner.jpg" alt="Logo" onerror="this.src='/images/shop_banner.jpg';">
+        <img id="navHeaderLogo" src="/images/logo.png" alt="Logo" onerror="this.src='/images/logo.png';">
         <div>
           <h1 id="navHeaderTitle">${title || 'Supermarket POS'}</h1>
           ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
@@ -75,6 +85,7 @@ function renderHeader(title, subtitle) {
       <nav class="header-nav">
         <a href="/dashboard.html" class="${currentPath.includes('dashboard') ? 'active' : ''}">Dashboard</a>
         <a href="/billing.html" class="${currentPath.includes('billing') ? 'active' : ''}">POS Billing</a>
+        <a href="/ai-insights.html" class="${currentPath.includes('ai-insights') ? 'active' : ''}" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; border-radius: 6px; padding: 6px 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(124,58,237,0.3);">🤖 AI Intelligence</a>
         <a href="/monthly-income.html" class="${currentPath.includes('monthly-income') ? 'active' : ''}">Monthly Statement</a>
         <a href="/products.html" class="${currentPath.includes('products') ? 'active' : ''}">Products</a>
         <a href="/customers.html" class="${currentPath.includes('customers') ? 'active' : ''}">Customers</a>

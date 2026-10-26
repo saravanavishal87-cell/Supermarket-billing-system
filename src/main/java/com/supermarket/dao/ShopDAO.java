@@ -26,7 +26,7 @@ public class ShopDAO {
             }
         }
         // Fallback default
-        return new ShopDetails(1, "RAHUL STORES", "123 Main Bazaar Road, Market City", "+91 98765 43210", "contact@rahulstores.com", "33AAAAA0000A1Z5", "/images/shop_banner.jpg", 3);
+        return new ShopDetails(1, "RAHUL STORES", "123 Main Bazaar Road, Market City", "+91 98765 43210", "contact@rahulstores.com", "33AAAAA0000A1Z5", "/images/logo.png", 3);
     }
 
     public boolean updateShopDetails(ShopDetails shop) throws SQLException {
