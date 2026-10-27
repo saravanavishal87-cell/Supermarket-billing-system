@@ -67,17 +67,20 @@ public class BillController {
             System.err.println("[BillController] Customer linking notice: " + e.getMessage());
         }
 
+        int cashierId = request.getCashierId() > 0 ? request.getCashierId() : 1;
+
         Bill bill = new Bill();
-        bill.setCashierId(request.getCashierId());
+        bill.setCashierId(cashierId);
         bill.setCustomerId(customerId);
-        bill.setCustomerPhone(customerPhone);
-        bill.setCustomerName(customerName != null ? customerName : "Walk-in Customer");
+        bill.setCustomerPhone(customerPhone != null ? customerPhone : "");
+        bill.setCustomerName(customerName != null && !customerName.isBlank() ? customerName : "Walk-in Customer");
         bill.setDiscount(request.getDiscount());
         bill.setItems(request.getItems());
         bill.setPaymentMode(payment.getModeName());
 
         if (!payment.processPayment(bill.getGrandTotal())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Payment processing failed. Please verify payment amount/details."));
+            return ResponseEntity.badRequest().body(Map.of("error", 
+                String.format("Payment verification failed for amount Rs. %.2f. Please check tendered amount.", bill.getGrandTotal())));
         }
 
         try {
@@ -100,7 +103,8 @@ public class BillController {
 
             return ResponseEntity.ok(resp);
         } catch (SQLException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            System.err.println("[BillController] Bill save error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", e.getMessage()));
         }
     }

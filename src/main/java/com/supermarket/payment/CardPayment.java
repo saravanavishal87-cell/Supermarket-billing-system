@@ -24,7 +24,7 @@ public class CardPayment extends AbstractPayment {
 
     @Override
     public boolean processPayment(double amount) {
-        return amount > 0;
+        return amount >= 0;
     }
 
     @Override

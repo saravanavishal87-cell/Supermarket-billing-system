@@ -20,12 +20,16 @@ public class CashPayment extends AbstractPayment {
 
     @Override
     public boolean processPayment(double amount) {
-        if (amount <= 0) return false;
-        if (cashTendered > 0 && cashTendered < amount) {
+        if (amount < 0) return false;
+        long amountCents = Math.round(amount * 100.0);
+        long cashCents = Math.round(cashTendered * 100.0);
+        if (cashCents > 0 && cashCents < amountCents) {
             return false;
         }
-        if (cashTendered >= amount) {
-            this.changeReturned = cashTendered - amount;
+        if (cashCents >= amountCents) {
+            this.changeReturned = (cashCents - amountCents) / 100.0;
+        } else {
+            this.changeReturned = 0.0;
         }
         return true;
     }

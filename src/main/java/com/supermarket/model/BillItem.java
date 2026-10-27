@@ -1,5 +1,8 @@
 package com.supermarket.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BillItem {
 
     private int itemId;
@@ -10,6 +13,8 @@ public class BillItem {
     private double quantity;
     private double unitPrice;
     private double lineTotal;
+    private String unit;
+    private Double quantityGrams;
 
     public BillItem() {}
 
@@ -19,7 +24,8 @@ public class BillItem {
         this.barcode = product.getBarcode();
         this.quantity = quantity;
         this.unitPrice = product.getPrice();
-        this.lineTotal = unitPrice * quantity;
+        this.unit = product.getUnit();
+        this.lineTotal = Math.round(unitPrice * quantity * 100.0) / 100.0;
     }
 
     public int getProductId() { return productId; }
@@ -34,13 +40,17 @@ public class BillItem {
     public double getQuantity() { return quantity; }
     public void setQuantity(double quantity) {
         this.quantity = quantity;
-        this.lineTotal = unitPrice * quantity;
+        if (this.lineTotal == 0 && this.unitPrice > 0) {
+            this.lineTotal = Math.round(unitPrice * quantity * 100.0) / 100.0;
+        }
     }
 
     public double getUnitPrice() { return unitPrice; }
     public void setUnitPrice(double unitPrice) {
         this.unitPrice = unitPrice;
-        this.lineTotal = unitPrice * quantity;
+        if (this.lineTotal == 0 && this.quantity > 0) {
+            this.lineTotal = Math.round(unitPrice * quantity * 100.0) / 100.0;
+        }
     }
 
     public int getItemId() { return itemId; }
@@ -50,5 +60,11 @@ public class BillItem {
     public void setBillId(int billId) { this.billId = billId; }
 
     public double getLineTotal() { return lineTotal; }
-    public void setLineTotal(double lineTotal) { this.lineTotal = lineTotal; }
+    public void setLineTotal(double lineTotal) { this.lineTotal = Math.round(lineTotal * 100.0) / 100.0; }
+
+    public String getUnit() { return unit; }
+    public void setUnit(String unit) { this.unit = unit; }
+
+    public Double getQuantityGrams() { return quantityGrams; }
+    public void setQuantityGrams(Double quantityGrams) { this.quantityGrams = quantityGrams; }
 }

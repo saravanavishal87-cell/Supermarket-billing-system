@@ -1,8 +1,10 @@
 package com.supermarket.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.supermarket.model.BillItem;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BillRequest {
     private int cashierId;
     private Integer customerId;

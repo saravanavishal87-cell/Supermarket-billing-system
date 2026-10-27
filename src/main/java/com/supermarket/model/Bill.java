@@ -37,10 +37,10 @@ public class Bill {
     }
 
     public void recalculate() {
-        subtotal = items.stream().mapToDouble(BillItem::getLineTotal).sum();
-        double taxable = Math.max(0, subtotal - discount);
-        taxAmount = (taxable > 1000.0) ? (taxable * 0.05) : 0.0;
-        grandTotal = taxable + taxAmount;
+        subtotal = Math.round(items.stream().mapToDouble(BillItem::getLineTotal).sum() * 100.0) / 100.0;
+        double taxable = Math.max(0, Math.round((subtotal - discount) * 100.0) / 100.0);
+        taxAmount = (taxable > 1000.0) ? (Math.round(taxable * 0.05 * 100.0) / 100.0) : 0.0;
+        grandTotal = Math.round((taxable + taxAmount) * 100.0) / 100.0;
     }
 
     public int getBillId() { return billId; }

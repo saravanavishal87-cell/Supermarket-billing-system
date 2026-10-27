@@ -183,7 +183,7 @@
         <div id="cashFields">
           <div class="form-group">
             <label>Cash Received from Customer (Rs.):</label>
-            <input type="number" id="cashTendered" placeholder="e.g. 500" oninput="calculateChange()" style="font-size:1.1rem;font-weight:bold;">
+            <input type="number" id="cashTendered" step="0.01" min="0" placeholder="e.g. 500" oninput="calculateChange()" onkeydown="if(event.key==='Enter'){event.preventDefault(); submitFinalPayment();}" style="font-size:1.1rem;font-weight:bold;">
           </div>
           <div style="display:flex;justify-content:space-between;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;margin-top:10px;">
             <span style="font-weight:600;color:#166534;">Change to Return:</span>
@@ -215,7 +215,7 @@
           </div>
           <div class="form-group">
             <label>Last 4 Digits of Card:</label>
-            <input type="text" id="cardLastDigits" maxlength="4" placeholder="1234">
+            <input type="text" id="cardLastDigits" maxlength="4" placeholder="1234" onkeydown="if(event.key==='Enter'){event.preventDefault(); submitFinalPayment();}">
           </div>
           <div style="font-size:0.8rem;color:var(--muted);">Swipe or dip card on POS Card Terminal for pin authorization.</div>
         </div>
@@ -891,12 +891,12 @@
     }
 
     function updateTotals() {
-      const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0);
-      const discount = parseFloat(document.getElementById('discount').value) || 0;
-      const taxable = Math.max(0, subtotal - discount);
+      const subtotal = Math.round(cart.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0) * 100) / 100;
+      const discount = Math.round((parseFloat(document.getElementById('discount').value) || 0) * 100) / 100;
+      const taxable = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
       // Charge 5% tax only if purchase/taxable amount is greater than 1000 Rs
-      const tax = taxable > 1000 ? (taxable * 0.05) : 0;
-      const grand = taxable + tax;
+      const tax = taxable > 1000 ? Math.round(taxable * 0.05 * 100) / 100 : 0;
+      const grand = Math.round((taxable + tax) * 100) / 100;
 
       document.getElementById('subtotal').textContent = formatCurrency(subtotal);
       document.getElementById('taxAmount').textContent = formatCurrency(tax);
@@ -912,10 +912,17 @@
       }
       const { grand } = updateTotals();
       document.getElementById('modalPayAmount').textContent = formatCurrency(grand);
-      document.getElementById('cashTendered').value = Math.ceil(grand);
+      document.getElementById('cashTendered').value = grand.toFixed(2);
       calculateChange();
       selectPaymentMode('CASH');
       document.getElementById('paymentModal').classList.add('active');
+      setTimeout(() => {
+        const cashInput = document.getElementById('cashTendered');
+        if (cashInput) {
+          cashInput.focus();
+          cashInput.select();
+        }
+      }, 150);
     }
 
     function closePaymentModal() {
@@ -935,10 +942,10 @@
     function calculateChange() {
       const { grand } = updateTotals();
       const cash = parseFloat(document.getElementById('cashTendered').value) || 0;
-      const change = cash - grand;
+      const change = Math.round((cash - grand) * 100) / 100;
       const elem = document.getElementById('changeReturnText');
-      if (change >= 0) {
-        elem.textContent = formatCurrency(change);
+      if (change >= -0.009) {
+        elem.textContent = formatCurrency(Math.max(0, change));
         elem.style.color = '#15803d';
       } else {
         elem.textContent = 'Insufficient Cash (' + formatCurrency(Math.abs(change)) + ' short)';
@@ -952,16 +959,20 @@
     }
 
     async function submitFinalPayment() {
-      const { grand } = updateTotals();
-      const discount = parseFloat(document.getElementById('discount').value) || 0;
+      const btn = document.getElementById('btnConfirmPay');
+      if (btn && btn.disabled) return;
+
+      const { grand, discount } = updateTotals();
 
       let custName = document.getElementById('customerName').value.trim() || 'Walk-in Customer';
       let custPhone = document.getElementById('customerPhone').value.trim();
       let custIdRaw = document.getElementById('selectedCustomerId').value.replace('#', '').trim();
       let custIdVal = (custIdRaw && !isNaN(parseInt(custIdRaw))) ? parseInt(custIdRaw) : null;
 
+      const cashierUserId = (user && (user.userId || user.id)) ? (user.userId || user.id) : 1;
+
       let paymentReq = {
-        cashierId: user.userId,
+        cashierId: cashierUserId,
         customerId: custIdVal,
         customerName: custName,
         customerPhone: custPhone,
@@ -972,11 +983,13 @@
 
       if (currentPaymentMode === 'CASH') {
         const cashTendered = parseFloat(document.getElementById('cashTendered').value) || 0;
-        if (cashTendered < grand) {
-          alert('Cash received is less than total amount!');
+        if (Math.round(cashTendered * 100) < Math.round(grand * 100)) {
+          alert('Cash received (' + formatCurrency(cashTendered) + ') is less than total amount (' + formatCurrency(grand) + ')!');
+          const cashInput = document.getElementById('cashTendered');
+          if (cashInput) { cashInput.focus(); cashInput.select(); }
           return;
         }
-        paymentReq.cashTendered = cashTendered;
+        paymentReq.cashTendered = Math.round(cashTendered * 100) / 100;
       } else if (currentPaymentMode === 'UPI') {
         paymentReq.upiId = 'saravanavishal06@oksbi';
         paymentReq.transactionRef = 'UPI-' + Math.floor(100000 + Math.random() * 900000);
@@ -985,12 +998,23 @@
         paymentReq.lastFourDigits = document.getElementById('cardLastDigits').value || '4321';
       }
 
+      if (btn) {
+        btn.disabled = true;
+        btn.dataset.origText = btn.innerHTML;
+        btn.innerHTML = '⏳ Processing Payment...';
+      }
+
       try {
         const response = await apiPost('/bills', paymentReq);
         closePaymentModal();
         showReceipt(response);
       } catch (err) {
-        alert('Payment processing failed: ' + err.message);
+        alert('Payment processing failed: ' + (err.message || 'Server error. Please retry.'));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = btn.dataset.origText || 'Confirm & Generate Receipt';
+        }
       }
     }
 
@@ -1019,6 +1043,8 @@
         </tr>`;
       }).join('');
 
+      const cashierName = (user && (user.fullName || user.username)) || 'Staff Cashier';
+
       const html = `
         <div class="receipt-header">
           <h2>RAHUL STORES</h2>
@@ -1028,8 +1054,8 @@
         <div class="receipt-meta">
           <div><strong>Bill No:</strong> ${billData.billNumber}</div>
           <div><strong>Date:</strong> ${dateStr}</div>
-          <div><strong>Cashier:</strong> ${user.fullName}</div>
-          <div><strong>Customer:</strong> ${billData.customerName || document.getElementById('customerName').value} ${billData.customerId ? '(ID #' + billData.customerId + ')' : ''} ${billData.customerPhone ? ' | ' + billData.customerPhone : ''}</div>
+          <div><strong>Cashier:</strong> ${escapeHtml(cashierName)}</div>
+          <div><strong>Customer:</strong> ${escapeHtml(billData.customerName || document.getElementById('customerName').value)} ${billData.customerId ? '(ID #' + billData.customerId + ')' : ''} ${billData.customerPhone ? ' | ' + escapeHtml(billData.customerPhone) : ''}</div>
           <div><strong>Payment Mode:</strong> ${billData.paymentMode} (${billData.transactionId})</div>
         </div>
         <table class="receipt-items">
